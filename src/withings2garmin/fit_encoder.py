@@ -190,12 +190,12 @@ class FitEncoder:
         # Data
         values = [
             (self._timestamp(timestamp), "I"),
-            (int(weight * 100) if weight else None, "H"),
-            (int(fat_percentage * 100) if fat_percentage else None, "H"),
-            (int(muscle_mass * 100) if muscle_mass else None, "H"),
-            (int(bone_mass * 100) if bone_mass else None, "H"),
-            (int(body_water * 100) if body_water else None, "H"),
-            (int(bmi * 10) if bmi else None, "H"),
+            (int(weight * 100) if weight is not None else None, "H"),
+            (int(fat_percentage * 100) if fat_percentage is not None else None, "H"),
+            (int(muscle_mass * 100) if muscle_mass is not None else None, "H"),
+            (int(bone_mass * 100) if bone_mass is not None else None, "H"),
+            (int(body_water * 100) if body_water is not None else None, "H"),
+            (int(bmi * 10) if bmi is not None else None, "H"),
         ]
         self._write_data_message(2, values)
 
@@ -223,7 +223,7 @@ class FitEncoder:
             (self._timestamp(timestamp), "I"),
             (systolic, "H"),
             (diastolic, "H"),
-            (heart_rate if heart_rate else None, "B"),
+            (heart_rate if heart_rate is not None else None, "B"),
         ]
         self._write_data_message(3, values)
 

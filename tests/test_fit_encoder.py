@@ -55,6 +55,27 @@ def test_write_weight_measurement_encodes_scaled_fields():
     assert int(24.5 * 10).to_bytes(2, "little") in data
 
 
+def test_write_weight_measurement_zero_values_are_not_marked_invalid():
+    encoder = FitEncoder()
+    encoder.write_file_id()
+
+    # weight=0.0 and bmi=0.0 are legitimate values, not "field omitted" - they must
+    # not be encoded as the FIT "invalid" uint16 sentinel (0xFFFF), which is what a
+    # falsy check (`if weight else None`) would incorrectly produce.
+    encoder.write_weight_measurement(
+        timestamp=datetime(2024, 1, 1),
+        weight=0.0,
+        fat_percentage=20.0,
+        muscle_mass=50.0,
+        bone_mass=3.0,
+        body_water=55.0,
+        bmi=0.0,
+    )
+    data = encoder.finalize()
+
+    assert b"\xff\xff" not in data
+
+
 def test_write_weight_measurement_without_bmi_writes_invalid_marker():
     encoder = FitEncoder()
     encoder.write_file_id()

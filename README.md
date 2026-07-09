@@ -178,7 +178,7 @@ Withings2Garmin/
 Core dependencies managed through `pyproject.toml`:
 
 - **requests** (≥2.31.0) - HTTP client for API communications
-- **garth** (≥0.4.46) - Garmin Connect authentication and API interface
+- **garminconnect** (≥0.2.7) - Garmin Connect authentication and API interface
 
 Development dependencies:
 
@@ -334,3 +334,14 @@ MIT License - see project repository for full license text.
 ## Support
 
 For issues and feature requests, please use the GitHub issue tracker.
+
+## Acknowledgments
+
+- The migration from a hand-rolled `garth` session client to the
+  [`garminconnect`](https://github.com/cyberjunky/python-garminconnect) library
+  follows the approach proposed by andrewleech in upstream
+  [PR #14](https://github.com/sodelalbert/Withings2Garmin/pull/14).
+- The BMI field written to the FIT weight message follows the pattern added by
+  eitanbehar in their fork
+  ([eitanbehar/Withings2Garmin](https://github.com/eitanbehar/Withings2Garmin),
+  branch `garmin-bmi-2026-working`).

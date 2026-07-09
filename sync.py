@@ -72,6 +72,14 @@ def convert_to_fit(measurements: List[Dict], height: Optional[float] = None) -> 
 
         # Write weight data if available
         if "weight" in data:
+            bmi = None
+            if height:
+                # BMI = weight (kg) / height (m)^2. Credit: eitanbehar's fork
+                # (https://github.com/eitanbehar/Withings2Garmin), which computes
+                # BMI from a Garmin height lookup; here we reuse the height
+                # already fetched from Withings instead of an extra API call.
+                bmi = data["weight"] / (height**2)
+
             encoder.write_weight_measurement(
                 timestamp=timestamp,
                 weight=data.get("weight"),
@@ -79,6 +87,7 @@ def convert_to_fit(measurements: List[Dict], height: Optional[float] = None) -> 
                 muscle_mass=data.get("muscle_mass"),
                 bone_mass=data.get("bone_mass"),
                 body_water=data.get("hydration"),
+                bmi=bmi,
             )
 
         # Write blood pressure data if available

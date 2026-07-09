@@ -170,6 +170,7 @@ class FitEncoder:
         muscle_mass: Optional[float] = None,
         bone_mass: Optional[float] = None,
         body_water: Optional[float] = None,
+        bmi: Optional[float] = None,
     ):
         """Write weight scale measurement."""
         # Definition (only write once)
@@ -181,6 +182,7 @@ class FitEncoder:
                 (5, 2, 0x84),  # muscle_mass (uint16, scale 100)
                 (4, 2, 0x84),  # bone_mass (uint16, scale 100)
                 (2, 2, 0x84),  # percent_hydration (uint16, scale 100)
+                (13, 2, 0x84),  # bmi (uint16, scale 10)
             ]
             self._write_definition_message(2, self.MSG_WEIGHT_SCALE, fields)
             self._weight_def_written = True
@@ -193,6 +195,7 @@ class FitEncoder:
             (int(muscle_mass * 100) if muscle_mass else None, "H"),
             (int(bone_mass * 100) if bone_mass else None, "H"),
             (int(body_water * 100) if body_water else None, "H"),
+            (int(bmi * 10) if bmi else None, "H"),
         ]
         self._write_data_message(2, values)
 

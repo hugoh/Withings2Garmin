@@ -1,10 +1,24 @@
-"""Simplified Garmin client using .env configuration."""
+"""Simplified Garmin client using .env configuration.
 
-import io
+Garmin auth/upload is delegated to the `garminconnect` library instead of
+talking to `garth` directly, per upstream PR #14
+(https://github.com/sodelalbert/Withings2Garmin/pull/14) by andrewleech,
+independently confirmed working by eitanbehar's fork
+(https://github.com/eitanbehar/Withings2Garmin, branch garmin-bmi-2026-working).
+"""
+
 import logging
 import os
+import tempfile
+from pathlib import Path
 
-import garth
+from garminconnect import (
+    Garmin,
+    GarminConnectAuthenticationError,
+    GarminConnectConnectionError,
+    GarminConnectInvalidFileFormatError,
+    GarminConnectTooManyRequestsError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -29,36 +43,35 @@ class GarminClient:
                 " GARMIN_USERNAME, GARMIN_PASSWORD"
             )
 
-        # Session file location - store in project directory
+        # Token store location - store in project directory. garminconnect
+        # (via garth) loads existing tokens from here if present and falls
+        # back to a credential login, persisting fresh tokens afterwards.
         self.session_file = ".garmin_session"
 
-        # Initialize Garth client
-        # Temporary fix for Garth user agent
-        garth.http.USER_AGENT = {"User-Agent": "GCM-iOS-5.7.2.1"}
-        self.client = garth.Client()
+        self.client = Garmin(
+            email=self.username,
+            password=self.password,
+            prompt_mfa=self._prompt_mfa,
+        )
 
         # Authenticate
         self._authenticate()
 
+    @staticmethod
+    def _prompt_mfa() -> str:
+        """Prompt the user for a Garmin Connect MFA code."""
+        return input("MFA code: ").strip()
+
     def _authenticate(self):
         """Authenticate with Garmin Connect."""
-        # Try to load existing session
-        if os.path.exists(self.session_file):
-            try:
-                self.client.load(self.session_file)
-                if hasattr(self.client, "username"):
-                    logger.info("Loaded existing Garmin session")
-                    return
-            except Exception as e:
-                logger.warning(f"Failed to load existing session: {e}")
-
-        # Login with credentials
         try:
-            logger.info("Logging into Garmin Connect...")
-            self.client.login(self.username, self.password)
-            self.client.dump(self.session_file)
-            logger.info("Successfully authenticated with Garmin Connect")
-        except Exception as e:
+            self.client.login(self.session_file)
+            logger.info("Authenticated with Garmin Connect")
+        except (
+            GarminConnectAuthenticationError,
+            GarminConnectConnectionError,
+            GarminConnectTooManyRequestsError,
+        ) as e:
             raise GarminException(f"Garmin authentication failed: {e}")
 
     def upload_file(
@@ -66,25 +79,28 @@ class GarminClient:
     ) -> bool:
         """Upload FIT file to Garmin Connect."""
         try:
-            fit_file = io.BytesIO(file_data)
-            fit_file.name = filename
+            with tempfile.TemporaryDirectory() as tmpdir:
+                fit_path = Path(tmpdir) / filename
+                fit_path.write_bytes(file_data)
+                self.client.upload_activity(str(fit_path))
 
-            self.client.upload(fit_file)
             logger.info(f"Successfully uploaded {filename} to Garmin Connect")
             return True
 
-        except Exception as e:
+        except (
+            GarminConnectConnectionError,
+            GarminConnectTooManyRequestsError,
+            GarminConnectInvalidFileFormatError,
+        ) as e:
             logger.error(f"Failed to upload file to Garmin Connect: {e}")
             return False
 
     def test_connection(self) -> bool:
         """Test connection to Garmin Connect."""
         try:
-            # Simple test to see if we can access the API
-            if hasattr(self.client, "username"):
-                logger.info(f"Connected to Garmin Connect as: {self.client.username}")
-                return True
-            return False
+            full_name = self.client.get_full_name()
+            logger.info(f"Connected to Garmin Connect as: {full_name}")
+            return bool(full_name)
         except Exception as e:
             logger.error(f"Garmin connection test failed: {e}")
             return False

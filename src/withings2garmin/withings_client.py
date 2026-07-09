@@ -24,6 +24,20 @@ AUTHORIZE_URL = "https://account.withings.com/oauth2_user/authorize2"
 TOKEN_URL = "https://wbsapi.withings.net/v2/oauth2"
 GETMEAS_URL = "https://wbsapi.withings.net/measure?action=getmeas"
 
+# Shared Withings developer-app credentials, used whenever
+# WITHINGS_CLIENT_ID/WITHINGS_CLIENT_SECRET aren't set via env/.env - lets
+# this fork be used out of the box without everyone registering their own
+# Withings app. Setting your own via WITHINGS_CLIENT_ID/WITHINGS_CLIENT_SECRET
+# is optional and overrides these. Not a secret in the traditional sense:
+# this is a shared, rate-limited app registration meant for exactly this
+# kind of reuse (same pattern as upstream jaroslawhartman/withings-sync,
+# whose callback page this project's default WITHINGS_CALLBACK_URL already
+# points at).
+DEFAULT_CLIENT_ID = "ac5f36d9fb0b8a4f05f340fc86e77b7cd21ecd551ca0cc3ed465303637ed82ea"
+DEFAULT_CLIENT_SECRET = (
+    "56a69ccff7ab4c3c17e63bea82e1f2b181ea1154390609019f37fe917a428d65"
+)
+
 # Retry only network-level failures (connection refused, DNS, timeout) -
 # not Withings' own status != 0 responses, which are typically auth/logic
 # errors (wrong credentials, expired token) that a retry won't fix.
@@ -48,17 +62,21 @@ class WithingsClient:
     """Simplified Withings client using .env configuration."""
 
     def __init__(self):
-        # Load configuration from environment variables
-        self.client_id = os.getenv("WITHINGS_CLIENT_ID")
-        self.client_secret = os.getenv("WITHINGS_CLIENT_SECRET")
+        # Load configuration from environment variables, falling back to
+        # the shared DEFAULT_CLIENT_ID/DEFAULT_CLIENT_SECRET if unset.
+        self.client_id = os.getenv("WITHINGS_CLIENT_ID") or DEFAULT_CLIENT_ID
+        self.client_secret = (
+            os.getenv("WITHINGS_CLIENT_SECRET") or DEFAULT_CLIENT_SECRET
+        )
         self.callback_url = os.getenv(
             "WITHINGS_CALLBACK_URL", "http://localhost:8080/callback"
         )
 
         if not self.client_id or not self.client_secret:
             raise WithingsException(
-                "Missing required environment variables:"
-                " WITHINGS_CLIENT_ID, WITHINGS_CLIENT_SECRET"
+                "Missing Withings API credentials: set WITHINGS_CLIENT_ID/"
+                "WITHINGS_CLIENT_SECRET (env or .env), or DEFAULT_CLIENT_ID/"
+                "DEFAULT_CLIENT_SECRET in withings_client.py"
             )
 
         # User tokens file location (env override -> cwd -> user data dir)

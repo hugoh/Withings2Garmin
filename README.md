@@ -69,22 +69,31 @@ cp sample/.env.example .env
 Edit `.env` with your credentials:
 
 ```bash
-# Withings API Configuration
+# Garmin Connect Configuration (required)
+GARMIN_USERNAME=your_garmin_username
+GARMIN_PASSWORD=your_garmin_password
+
+# Withings API Configuration (optional - see below)
 WITHINGS_CLIENT_ID=your_withings_client_id
 WITHINGS_CLIENT_SECRET=your_withings_client_secret
 WITHINGS_CALLBACK_URL=https://jaroslawhartman.github.io/withings-sync/contrib/withings.html
-
-# Garmin Connect Configuration
-GARMIN_USERNAME=your_garmin_username
-GARMIN_PASSWORD=your_garmin_password
 ```
 
-### Withings API Setup
+### Withings API Setup (optional)
+
+`WITHINGS_CLIENT_ID`/`WITHINGS_CLIENT_SECRET` are **optional**: if unset, this
+tool falls back to a shared Withings developer-app registration baked into
+`withings_client.py` (`DEFAULT_CLIENT_ID`/`DEFAULT_CLIENT_SECRET`), the same
+pattern upstream [jaroslawhartman/withings-sync](https://github.com/jaroslawhartman/withings-sync)
+uses for its own default — most users don't need to register their own app.
+That shared app is rate-limited across everyone using it, so if you hit
+limits or want your own quota, register your own:
 
 1. Create a Withings developer account at [Withings Developer Portal](https://developer.withings.com/)
 2. Create a new application
 3. Set the callback URL to: `https://jaroslawhartman.github.io/withings-sync/contrib/withings.html`
-4. Copy the Client ID and Client Secret to your `.env` file
+4. Set `WITHINGS_CLIENT_ID`/`WITHINGS_CLIENT_SECRET` in `.env` to override
+   the default
 
 ### Where files are stored
 

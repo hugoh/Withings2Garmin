@@ -34,11 +34,37 @@ def _client_with_tokens(tokens):
         return WithingsClient()
 
 
-def test_missing_env_vars_raise(monkeypatch):
+def test_missing_env_vars_falls_back_to_default_credentials(monkeypatch):
+    # WITHINGS_CLIENT_ID/SECRET are optional - unset, the client falls back
+    # to the shared DEFAULT_CLIENT_ID/DEFAULT_CLIENT_SECRET rather than
+    # requiring every user to register their own Withings app.
+    from withings2garmin.withings_client import DEFAULT_CLIENT_ID, DEFAULT_CLIENT_SECRET
+
     monkeypatch.delenv("WITHINGS_CLIENT_ID", raising=False)
     monkeypatch.delenv("WITHINGS_CLIENT_SECRET", raising=False)
+
+    client = _client_with_tokens({"access_token": "a", "refresh_token": "r"})
+
+    assert client.client_id == DEFAULT_CLIENT_ID
+    assert client.client_secret == DEFAULT_CLIENT_SECRET
+
+
+def test_missing_credentials_raises_if_defaults_also_unset(monkeypatch):
+    monkeypatch.delenv("WITHINGS_CLIENT_ID", raising=False)
+    monkeypatch.delenv("WITHINGS_CLIENT_SECRET", raising=False)
+    monkeypatch.setattr("withings2garmin.withings_client.DEFAULT_CLIENT_ID", "")
+    monkeypatch.setattr("withings2garmin.withings_client.DEFAULT_CLIENT_SECRET", "")
+
     with pytest.raises(WithingsException):
         WithingsClient()
+
+
+def test_explicit_env_vars_override_default_credentials():
+    # withings_env fixture sets WITHINGS_CLIENT_ID/SECRET explicitly.
+    client = _client_with_tokens({"access_token": "a", "refresh_token": "r"})
+
+    assert client.client_id == "client-id"
+    assert client.client_secret == "client-secret"
 
 
 def test_ensure_authenticated_prompts_for_auth_code_when_no_tokens():

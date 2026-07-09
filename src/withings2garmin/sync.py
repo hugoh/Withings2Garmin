@@ -236,8 +236,10 @@ def main():
 
     args = parser.parse_args()
 
-    setup_logging(args.verbose)
+    # Must run before setup_logging(): .env can set WITHINGS2GARMIN_LOG_DIR,
+    # which setup_logging() -> paths.log_dir() reads from os.environ.
     load_env_file(str(paths.resolve_env_file()))
+    setup_logging(args.verbose)
 
     return sync_data(args)
 

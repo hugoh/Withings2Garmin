@@ -1,5 +1,6 @@
 import argparse
 import json
+import sys
 from datetime import datetime
 from unittest.mock import patch
 
@@ -7,6 +8,7 @@ from withings2garmin.garmin_client import GarminException
 from withings2garmin.sync import (
     convert_to_fit,
     load_env_file,
+    main,
     save_measurements_json,
     sync_data,
 )
@@ -58,6 +60,24 @@ def test_load_env_file_sets_environment(tmp_path, monkeypatch):
 
 def test_load_env_file_missing_file_is_noop(tmp_path):
     load_env_file(str(tmp_path / "does-not-exist.env"))  # should not raise
+
+
+def test_main_loads_env_file_before_configuring_logging(tmp_path, monkeypatch):
+    # .env must be loaded before setup_logging() runs, since setup_logging()
+    # resolves the log directory from WITHINGS2GARMIN_LOG_DIR via os.environ -
+    # if the order were reversed, this env var set only in .env would be
+    # silently ignored and logs would go to the platformdirs default instead.
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("WITHINGS2GARMIN_LOG_DIR", raising=False)
+    log_dir = tmp_path / "custom-logs"
+    (tmp_path / ".env").write_text(f"WITHINGS2GARMIN_LOG_DIR={log_dir}\n")
+    monkeypatch.setattr(sys, "argv", ["withings2garmin"])
+
+    with patch("withings2garmin.sync.sync_data", return_value=0) as mock_sync_data:
+        main()
+
+    mock_sync_data.assert_called_once()
+    assert log_dir.is_dir()
 
 
 def _args(**overrides):

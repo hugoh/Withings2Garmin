@@ -128,7 +128,7 @@ uv run withings2garmin --garmin -f 2024-01-01 -t 2024-01-31 \
 
 When running for the first time, you'll see:
 
-```
+```text
 ============================================================
 WITHINGS AUTHORIZATION REQUIRED
 ============================================================
@@ -198,13 +198,21 @@ default to OS-appropriate user config/data/log directories instead (see
 
 ## Development
 
+Linting/formatting/hygiene checks are defined once in `hk.pkl` and run via
+[`hk`](https://hk.jdx.dev) (tool versions pinned in `mise.toml` — run
+`mise install` first):
+
 ```bash
-# Static checks (isort, black, flake8, mypy) - see utils/precommit.sh
-uv run isort . && uv run black . && uv run flake8 . && uv run mypy .
+hk check   # verify (lint, format-check, GH Actions security/pinning, etc.)
+hk fix     # auto-fix what can be fixed
 
 # Run tests
 uv run pytest
 ```
+
+If your global git hooks already invoke `hk` (per-machine setup, not
+project-specific), `hk check` also runs automatically on commit/push. If not,
+run `hk install` once in this repo to wire that up locally.
 
 Dependencies are managed in `pyproject.toml`; run `uv lock --upgrade && uv sync`
 to update them.

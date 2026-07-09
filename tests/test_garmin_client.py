@@ -13,6 +13,7 @@ from withings2garmin.garmin_client import (
 def garmin_env(monkeypatch, tmp_path):
     monkeypatch.setenv("GARMIN_USERNAME", "user")
     monkeypatch.setenv("GARMIN_PASSWORD", "pass")
+    monkeypatch.setenv("GARMIN_SESSION_DIR", str(tmp_path / "garmin_session"))
     monkeypatch.chdir(tmp_path)
 
 
@@ -23,14 +24,14 @@ def test_missing_env_vars_raise(monkeypatch):
         GarminClient()
 
 
-def test_authenticate_success():
+def test_authenticate_success(tmp_path):
     with patch("withings2garmin.garmin_client.Garmin") as MockGarmin:
         instance = MockGarmin.return_value
         instance.login.return_value = (None, None)
 
         client = GarminClient()
 
-    instance.login.assert_called_once_with(".garmin_session")
+    instance.login.assert_called_once_with(str(tmp_path / "garmin_session"))
     assert client.client is instance
 
 

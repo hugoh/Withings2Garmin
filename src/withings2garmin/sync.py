@@ -7,6 +7,7 @@ import os
 from datetime import datetime
 from typing import Dict, List, Optional
 
+from . import paths
 from .fit_encoder import FitEncoder
 from .garmin_client import GarminClient, GarminException
 from .withings_client import WithingsClient, WithingsException
@@ -14,9 +15,7 @@ from .withings_client import WithingsClient, WithingsException
 
 def setup_logging(verbose: bool = False):
     """Setup logging configuration."""
-    # Create logs directory if it doesn't exist
-    logs_dir = "logs"
-    os.makedirs(logs_dir, exist_ok=True)
+    logs_dir = str(paths.log_dir())
 
     # Configure logging level
     level = logging.DEBUG if verbose else logging.INFO
@@ -45,9 +44,10 @@ def setup_logging(verbose: bool = False):
 def load_env_file(env_file: str = ".env"):
     """Load environment variables from .env file."""
     if not os.path.exists(env_file):
-        logging.debug(f"Environment file '{env_file}' not found in project root.")
+        logging.debug(f"Environment file '{env_file}' not found.")
         return
 
+    logging.debug(f"Loading environment file: {env_file}")
     with open(env_file, "r") as f:
         for line in f:
             line = line.strip()
@@ -236,9 +236,8 @@ def main():
 
     args = parser.parse_args()
 
-    load_env_file()
-
     setup_logging(args.verbose)
+    load_env_file(str(paths.resolve_env_file()))
 
     return sync_data(args)
 

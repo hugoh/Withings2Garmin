@@ -703,6 +703,7 @@ version = "1.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "garminconnect" },
+    { name = "platformdirs" },
     { name = "requests" },
 ]
 
@@ -720,6 +721,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "garminconnect", specifier = ">=0.3.6" },
+    { name = "platformdirs", specifier = ">=4.0" },
     { name = "requests", specifier = ">=2.34.2" },
 ]
 

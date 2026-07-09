@@ -9,6 +9,8 @@ from typing import Dict, List, Optional
 
 import requests
 
+from . import paths
+
 logger = logging.getLogger(__name__)
 
 AUTHORIZE_URL = "https://account.withings.com/oauth2_user/authorize2"
@@ -39,8 +41,9 @@ class WithingsClient:
                 " WITHINGS_CLIENT_ID, WITHINGS_CLIENT_SECRET"
             )
 
-        # User tokens file - store in project directory
-        self.tokens_file = ".withings_tokens.json"
+        # User tokens file location (env override -> cwd -> user data dir)
+        self.tokens_file = str(paths.withings_tokens_file())
+        logger.debug(f"Using Withings tokens file: {self.tokens_file}")
         self.tokens = self._load_tokens()
 
         # Ensure we have valid tokens

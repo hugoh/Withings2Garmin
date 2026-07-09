@@ -20,6 +20,8 @@ from garminconnect import (
     GarminConnectTooManyRequestsError,
 )
 
+from . import paths
+
 logger = logging.getLogger(__name__)
 
 
@@ -43,10 +45,11 @@ class GarminClient:
                 " GARMIN_USERNAME, GARMIN_PASSWORD"
             )
 
-        # Token store location - store in project directory. garminconnect
-        # (via garth) loads existing tokens from here if present and falls
+        # Token store location (env override -> cwd -> user data dir).
+        # garminconnect loads existing tokens from here if present and falls
         # back to a credential login, persisting fresh tokens afterwards.
-        self.session_file = ".garmin_session"
+        self.session_file = str(paths.garmin_session_dir())
+        logger.debug(f"Using Garmin session directory: {self.session_file}")
 
         self.client = Garmin(
             email=self.username,

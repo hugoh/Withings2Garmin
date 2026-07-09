@@ -1,5 +1,21 @@
 # Withings2Garmin
 
+> **This is a fork.** This repository builds on
+> [sodelalbert/Withings2Garmin](https://github.com/sodelalbert/Withings2Garmin),
+> and borrows specific fixes from other forks/PRs in that project's family
+> tree rather than reinventing them:
+>
+> - The migration to the [`garminconnect`](https://github.com/cyberjunky/python-garminconnect)
+>   library (replacing a hand-rolled `garth` session client) follows the
+>   approach proposed by andrewleech in upstream
+>   [PR #14](https://github.com/sodelalbert/Withings2Garmin/pull/14).
+> - The BMI field written to the FIT weight message follows the pattern added
+>   by eitanbehar in their fork
+>   ([eitanbehar/Withings2Garmin](https://github.com/eitanbehar/Withings2Garmin),
+>   branch `garmin-bmi-2026-working`).
+>
+> See [Acknowledgments](#acknowledgments) below for the full picture.
+
 A comprehensive Withings to Garmin Connect synchronization tool built with modern Python tooling and `.env` configuration.
 
 ## Features
@@ -65,6 +81,31 @@ WITHINGS_CALLBACK_URL=https://jaroslawhartman.github.io/withings-sync/contrib/wi
 GARMIN_USERNAME=your_garmin_username
 GARMIN_PASSWORD=your_garmin_password
 ```
+
+### Where files are stored
+
+`withings2garmin` is a standalone CLI (installable via `uvx`), so it doesn't rely
+on a "repo root" for storing your credentials, tokens, or logs. It resolves each
+in order:
+
+| What | 1. explicit override | 2. cwd (local dev) | 3. default |
+|---|---|---|---|
+| Config file (`.env`) | `$WITHINGS2GARMIN_CONFIG_FILE` | `./.env` | `<user config dir>/config.env` |
+| Withings tokens | `$WITHINGS_TOKENS_FILE` | `./.withings_tokens.json` | `<user data dir>/withings_tokens.json` |
+| Garmin session | `$GARMIN_SESSION_DIR` | `./.garmin_session` | `<user data dir>/garmin_session` |
+| Logs | `$WITHINGS2GARMIN_LOG_DIR` | *(always)* | `<user log dir>` |
+
+`<user config/data/log dir>` follow OS conventions via
+[`platformdirs`](https://github.com/tox-dev/platformdirs) — e.g. on Linux,
+`~/.config/withings2garmin`, `~/.local/share/withings2garmin`, and
+`~/.local/state/withings2garmin/log` respectively; macOS and Windows use their
+native equivalents. You can also override the whole config/data/log directory
+at once with `WITHINGS2GARMIN_CONFIG_DIR`, `WITHINGS2GARMIN_DATA_DIR`, and
+`WITHINGS2GARMIN_LOG_DIR`.
+
+If you keep running `withings2garmin` from the same directory (e.g. a repo
+checkout via `uv run`), files there are always found first — nothing changes
+for that workflow.
 
 ### Withings API Setup
 
@@ -168,33 +209,35 @@ Withings2Garmin/
 │   ├── sync.py              # Main application entry point
 │   ├── withings_client.py   # Withings API client with OAuth 2.0
 │   ├── garmin_client.py     # Garmin Connect client with MFA support
-│   └── fit_encoder.py       # FIT file format encoder
+│   ├── fit_encoder.py       # FIT file format encoder
+│   └── paths.py             # Resolves config/data/log file locations
 ├── tests/                   # pytest test suite
 ├── pyproject.toml           # Project configuration and dependencies
 ├── uv.lock                  # Dependency lock file
-├── .env                     # Environment configuration (user-created)
-├── sample/
-│   └── .env.example         # Environment template
-├── .withings_tokens.json    # Withings OAuth tokens (auto-created)
-├── .garmin_session/         # Garmin session data (auto-created)
-└── logs/                    # Application logs (auto-created)
+├── .env                     # Environment configuration (optional, cwd override)
+└── sample/
+    └── .env.example         # Environment template
 ```
+
+Credentials, tokens, session data, and logs live outside the repo by default —
+see [Where files are stored](#where-files-are-stored).
 
 ## Dependencies
 
 Core dependencies managed through `pyproject.toml`:
 
-- **requests** (≥2.31.0) - HTTP client for API communications
-- **garminconnect** (≥0.2.7) - Garmin Connect authentication and API interface
+- **requests** (≥2.34.2) - HTTP client for API communications
+- **garminconnect** (≥0.3.6) - Garmin Connect authentication and API interface
+- **platformdirs** (≥4.0) - OS-appropriate config/data/log directory resolution
 
 Development dependencies (`[dependency-groups.dev]`, installed automatically by
 `uv sync` but not part of the published package):
 
-- **black** (≥25.1.0) - Code formatting
-- **mypy** (≥1.17.0) - Static type checking
+- **black** (≥26.5.1) - Code formatting
+- **mypy** (≥2.2.0) - Static type checking
 - **flake8** with extensions - Code linting
-- **isort** (≥6.0.1) - Import sorting
-- **pytest** (≥8.4.1) - Testing framework
+- **isort** (≥8.0.1) - Import sorting
+- **pytest** (≥9.1.1) - Testing framework
 
 ## Command Line Reference
 
@@ -241,7 +284,9 @@ The application generates standard FIT files compatible with:
 
 ### Log Files
 
-- **Location**: `logs/withings_sync_YYYYMMDD_HHMMSS.log`
+- **Location**: `<user log dir>/withings_sync_YYYYMMDD_HHMMSS.log` (see
+  [Where files are stored](#where-files-are-stored); override with
+  `WITHINGS2GARMIN_LOG_DIR`)
 - **Retention**: Manual cleanup (logs are not auto-deleted)
 - **Format**: Timestamped entries with log levels
 
@@ -263,11 +308,15 @@ The application generates standard FIT files compatible with:
 
 ### Authentication Issues
 
+Tokens/session files may be in your working directory or in the default user
+data directory — see [Where files are stored](#where-files-are-stored) if
+unsure. `--verbose` logs the resolved paths on every run.
+
 **Withings token expiration:**
 
 ```bash
 # Remove invalid tokens and re-authenticate
-rm .withings_tokens.json
+rm "$(uv run python -c 'from withings2garmin import paths; print(paths.withings_tokens_file())')"
 uv run withings2garmin --garmin
 ```
 
@@ -275,7 +324,7 @@ uv run withings2garmin --garmin
 
 ```bash
 # Clear Garmin session and re-authenticate
-rm -rf .garmin_session
+rm -rf "$(uv run python -c 'from withings2garmin import paths; print(paths.garmin_session_dir())')"
 uv run withings2garmin --garmin
 ```
 
@@ -300,6 +349,25 @@ uv run withings2garmin --garmin
 - Check internet connectivity
 - Verify firewall settings
 - Confirm API endpoints are accessible
+
+### Upgrading (breaking change: config/token/session/log locations)
+
+`.env`, `.withings_tokens.json`, `.garmin_session/`, and `logs/` used to be
+strictly relative to whatever directory you ran the tool from. They now
+default to OS-appropriate user config/data/log directories instead (see
+[Where files are stored](#where-files-are-stored)):
+
+- **You keep running the tool from the same directory as before** (e.g. `uv
+  run withings2garmin` from a repo checkout): no change — that directory is
+  still checked first for `.env`/tokens/session.
+- **You run it from a new directory, a fresh install, CI, or a container**:
+  `.env`/tokens/session now resolve to the new default locations instead of
+  erroring or silently treating you as unauthenticated with no explanation.
+  Logs unconditionally move to the new default log directory (no cwd
+  fallback, since there's no continuity to preserve for logs).
+- To pin the old cwd-relative behavior explicitly, set
+  `WITHINGS2GARMIN_CONFIG_FILE=./.env`, `WITHINGS_TOKENS_FILE=./.withings_tokens.json`,
+  `GARMIN_SESSION_DIR=./.garmin_session`, and `WITHINGS2GARMIN_LOG_DIR=./logs`.
 
 ## Development
 

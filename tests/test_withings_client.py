@@ -1,4 +1,5 @@
 import json
+import os
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
@@ -11,11 +12,12 @@ from withings2garmin.withings_client import WithingsClient, WithingsException
 def withings_env(monkeypatch, tmp_path):
     monkeypatch.setenv("WITHINGS_CLIENT_ID", "client-id")
     monkeypatch.setenv("WITHINGS_CLIENT_SECRET", "client-secret")
+    monkeypatch.setenv("WITHINGS_TOKENS_FILE", str(tmp_path / "withings_tokens.json"))
     monkeypatch.chdir(tmp_path)
 
 
 def _client_with_tokens(tokens):
-    with open(".withings_tokens.json", "w") as f:
+    with open(os.environ["WITHINGS_TOKENS_FILE"], "w") as f:
         json.dump(tokens, f)
     with patch("withings2garmin.withings_client.requests.post") as mock_post:
         mock_post.return_value = MagicMock(

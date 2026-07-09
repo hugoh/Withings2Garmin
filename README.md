@@ -13,28 +13,18 @@
 >   by eitanbehar in their fork
 >   ([eitanbehar/Withings2Garmin](https://github.com/eitanbehar/Withings2Garmin),
 >   branch `garmin-bmi-2026-working`).
->
-> See [Acknowledgments](#acknowledgments) below for the full picture.
 
-A comprehensive Withings to Garmin Connect synchronization tool built with modern Python tooling and `.env` configuration.
+Syncs Withings body measurements (weight, body composition, blood pressure)
+to Garmin Connect as FIT files.
 
 ## Features
 
-- **Automatic data synchronization** from Withings to Garmin Connect
-- **Multiple output formats**: JSON, FIT files, and direct Garmin upload
-- **Comprehensive health metrics support**:
-  - Weight measurements with BMI calculation
-  - Body composition (fat percentage, muscle mass, bone mass, body water)
-  - Blood pressure readings (systolic, diastolic, heart rate)
-- **Flexible date range selection** with automatic last sync tracking
-- **Authentication management**:
-  - OAuth 2.0 flow for Withings API
-  - Multi-factor authentication support for Garmin Connect
-  - Local token storage and automatic refresh
-- **Robust logging system** with timestamped log files
-- **FIT file encoding** compatible with Garmin devices
-- **Environment-based configuration** using `.env` files
-- **Modern Python packaging** with uv dependency management
+- Withings OAuth 2.0 flow and Garmin Connect auth (including MFA), with
+  tokens cached locally so you don't re-authenticate every run
+- Weight, body composition, and blood pressure sync, with BMI computed from
+  Withings weight/height
+- Output to JSON and/or FIT file, in addition to (or instead of) uploading to
+  Garmin Connect
 
 ## Installation
 
@@ -82,6 +72,13 @@ GARMIN_USERNAME=your_garmin_username
 GARMIN_PASSWORD=your_garmin_password
 ```
 
+### Withings API Setup
+
+1. Create a Withings developer account at [Withings Developer Portal](https://developer.withings.com/)
+2. Create a new application
+3. Set the callback URL to: `https://jaroslawhartman.github.io/withings-sync/contrib/withings.html`
+4. Copy the Client ID and Client Secret to your `.env` file
+
 ### Where files are stored
 
 `withings2garmin` is a standalone CLI (installable via `uvx`), so it doesn't rely
@@ -107,61 +104,18 @@ If you keep running `withings2garmin` from the same directory (e.g. a repo
 checkout via `uv run`), files there are always found first — nothing changes
 for that workflow.
 
-### Withings API Setup
-
-1. Create a Withings developer account at [Withings Developer Portal](https://developer.withings.com/)
-2. Create a new application
-3. Set the callback URL to: `https://jaroslawhartman.github.io/withings-sync/contrib/withings.html`
-4. Copy the Client ID and Client Secret to your `.env` file
-
 ## Usage
 
-All commands use `uv run` to ensure proper environment isolation and dependency management.
-
-### Basic Operations
-
-**Export measurements to JSON:**
+Run `withings2garmin --help` for the full flag reference. A couple of common
+invocations:
 
 ```bash
-uv run withings2garmin --output-json measurements.json
-```
-
-**Sync to Garmin Connect:**
-
-```bash
+# Sync to Garmin Connect (default date range: since last sync)
 uv run withings2garmin --garmin
-```
 
-**Generate FIT file:**
-
-```bash
-uv run withings2garmin --output-fit measurements.fit
-```
-
-**Multiple outputs with Garmin sync:**
-
-```bash
-uv run withings2garmin --garmin --output-json backup.json --output-fit backup.fit
-```
-
-### Date Range Specification
-
-**Sync specific date range:**
-
-```bash
-uv run withings2garmin --garmin -f 2024-01-01 -t 2024-01-31
-```
-
-**Sync from specific date to today:**
-
-```bash
-uv run withings2garmin --garmin -f 2024-01-01
-```
-
-**Verbose logging for debugging:**
-
-```bash
-uv run withings2garmin --garmin --verbose
+# Sync a specific date range and also save JSON/FIT files locally
+uv run withings2garmin --garmin -f 2024-01-01 -t 2024-01-31 \
+    --output-json backup.json --output-fit backup.fit
 ```
 
 ### Authentication Workflow
@@ -183,172 +137,41 @@ You have 30 seconds to complete this process!
 Enter authorization code: [paste code here]
 ```
 
-1. Open the provided URL in your browser
-2. Log into your Withings account and authorize the application
-3. Copy the authorization code from the callback URL
-4. Paste it into the terminal prompt
-5. Tokens are automatically saved for future use
+Open the URL, authorize the application, and paste the resulting code back
+into the terminal. Tokens are then saved for future runs.
 
 #### Garmin Multi-Factor Authentication
 
-If MFA is enabled on your Garmin account:
+If MFA is enabled on your Garmin account, you'll be prompted for `MFA code:`
+on first login; the session is then saved locally for future runs.
 
-```
-MFA code: [enter your 6-digit code]
-```
+## Logging
 
-1. Check your email for the Garmin verification code
-2. Enter the 6-digit code when prompted
-3. Session is saved locally for future authentication
-
-## Project Architecture
-
-```
-Withings2Garmin/
-├── src/withings2garmin/
-│   ├── sync.py              # Main application entry point
-│   ├── withings_client.py   # Withings API client with OAuth 2.0
-│   ├── garmin_client.py     # Garmin Connect client with MFA support
-│   ├── fit_encoder.py       # FIT file format encoder
-│   └── paths.py             # Resolves config/data/log file locations
-├── tests/                   # pytest test suite
-├── pyproject.toml           # Project configuration and dependencies
-├── uv.lock                  # Dependency lock file
-├── .env                     # Environment configuration (optional, cwd override)
-└── sample/
-    └── .env.example         # Environment template
-```
-
-Credentials, tokens, session data, and logs live outside the repo by default —
-see [Where files are stored](#where-files-are-stored).
-
-## Dependencies
-
-Core dependencies managed through `pyproject.toml`:
-
-- **requests** (≥2.34.2) - HTTP client for API communications
-- **garminconnect** (≥0.3.6) - Garmin Connect authentication and API interface
-- **platformdirs** (≥4.0) - OS-appropriate config/data/log directory resolution
-
-Development dependencies (`[dependency-groups.dev]`, installed automatically by
-`uv sync` but not part of the published package):
-
-- **black** (≥26.5.1) - Code formatting
-- **mypy** (≥2.2.0) - Static type checking
-- **flake8** with extensions - Code linting
-- **isort** (≥8.0.1) - Import sorting
-- **pytest** (≥9.1.1) - Testing framework
-
-## Command Line Reference
-
-```
-usage: withings2garmin [-h] [-f FROM_DATE] [-t TO_DATE] [--garmin]
-               [--output-json OUTPUT_JSON] [--output-fit OUTPUT_FIT] [--verbose]
-
-options:
-  -h, --help                    Show help message and exit
-  -f FROM_DATE                  Start date (YYYY-MM-DD). If not specified, uses last sync date
-  -t TO_DATE                    End date (YYYY-MM-DD). If not specified, uses today
-  --garmin                      Enable Garmin Connect sync
-  --output-json OUTPUT_JSON     Output measurements to JSON file
-  --output-fit OUTPUT_FIT       Save FIT file to specified path
-  --verbose, -v                 Enable verbose logging
-```
-
-## Data Processing
-
-### Supported Withings Metrics
-
-- **Weight**: Body weight with automatic BMI calculation
-- **Body Composition**: Fat percentage, muscle mass, bone mass, body water
-- **Cardiovascular**: Blood pressure (systolic/diastolic), heart rate
-- **Physical**: Height measurements
-
-### FIT File Format
-
-The application generates standard FIT files compatible with:
-
-- Garmin Connect
-- Garmin devices
-- Third-party fitness applications
-- ANT+ ecosystem tools
-
-### Data Transformation
-
-- Automatic unit conversion to metric system
-- BMI calculation using stored height data
-- Timestamp normalization for cross-platform compatibility
-- Data validation and error handling
-
-## Logging and Monitoring
-
-### Log Files
-
-- **Location**: `<user log dir>/withings_sync_YYYYMMDD_HHMMSS.log` (see
-  [Where files are stored](#where-files-are-stored); override with
-  `WITHINGS2GARMIN_LOG_DIR`)
-- **Retention**: Manual cleanup (logs are not auto-deleted)
-- **Format**: Timestamped entries with log levels
-
-### Log Levels
-
-- **INFO**: Standard operation messages
-- **DEBUG**: Detailed operation information (use `--verbose`)
-- **WARNING**: Non-critical issues
-- **ERROR**: Operation failures
-
-### Console Output
-
-- Real-time progress indicators
-- Authentication prompts
-- Success/failure summaries
-- Error messages with context
+Each run writes a timestamped log file under the log directory (see
+[Where files are stored](#where-files-are-stored)). `--verbose` raises the
+log level to DEBUG (including the resolved config/token/session paths);
+default is INFO.
 
 ## Troubleshooting
-
-### Authentication Issues
 
 Tokens/session files may be in your working directory or in the default user
 data directory — see [Where files are stored](#where-files-are-stored) if
 unsure. `--verbose` logs the resolved paths on every run.
 
-**Withings token expiration:**
+**Withings token expiration / Garmin session issues:**
 
 ```bash
-# Remove invalid tokens and re-authenticate
+# Remove invalid Withings tokens and re-authenticate
 rm "$(uv run python -c 'from withings2garmin import paths; print(paths.withings_tokens_file())')"
-uv run withings2garmin --garmin
-```
 
-**Garmin session issues:**
-
-```bash
-# Clear Garmin session and re-authenticate
+# Or clear the Garmin session and re-authenticate
 rm -rf "$(uv run python -c 'from withings2garmin import paths; print(paths.garmin_session_dir())')"
+
 uv run withings2garmin --garmin
 ```
 
-### Data Issues
-
-**No measurements found:**
-
-- Verify date range with `-f` and `-t` options
-- Check Withings account has data for specified period
-- Ensure Withings device is synced
-
-**FIT file generation errors:**
-
-- Verify write permissions in target directory
-- Check available disk space
-- Ensure measurements contain valid data
-
-### Network Issues
-
-**API connection failures:**
-
-- Check internet connectivity
-- Verify firewall settings
-- Confirm API endpoints are accessible
+**No measurements found:** verify the date range (`-f`/`-t`) covers a period
+where your Withings device actually synced data.
 
 ### Upgrading (breaking change: config/token/session/log locations)
 
@@ -371,53 +194,17 @@ default to OS-appropriate user config/data/log directories instead (see
 
 ## Development
 
-### Code Quality
-
-The project uses automated code quality tools:
-
 ```bash
-# Format code
-uv run black .
+# Static checks (isort, black, flake8, mypy) - see utils/precommit.sh
+uv run isort . && uv run black . && uv run flake8 . && uv run mypy .
 
-# Sort imports
-uv run isort .
-
-# Lint code
-uv run flake8 .
-
-# Type checking
-uv run mypy .
-```
-
-### Testing
-
-```bash
 # Run tests
 uv run pytest
 ```
 
+Dependencies are managed in `pyproject.toml`; run `uv lock --upgrade && uv sync`
+to update them.
+
 ## License
 
-MIT License - see project repository for full license text.
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make changes following code quality standards
-4. Submit a pull request
-
-## Support
-
-For issues and feature requests, please use the GitHub issue tracker.
-
-## Acknowledgments
-
-- The migration from a hand-rolled `garth` session client to the
-  [`garminconnect`](https://github.com/cyberjunky/python-garminconnect) library
-  follows the approach proposed by andrewleech in upstream
-  [PR #14](https://github.com/sodelalbert/Withings2Garmin/pull/14).
-- The BMI field written to the FIT weight message follows the pattern added by
-  eitanbehar in their fork
-  ([eitanbehar/Withings2Garmin](https://github.com/eitanbehar/Withings2Garmin),
-  branch `garmin-bmi-2026-working`).
+MIT — see `pyproject.toml`.

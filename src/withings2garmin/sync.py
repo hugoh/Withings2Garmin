@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Dict, List, Optional
 
 from dotenv import load_dotenv
+from filelock import FileLock, Timeout
 
 from . import paths
 from .fit_encoder import FitEncoder
@@ -181,119 +182,21 @@ def save_measurements_json(measurements: List[Dict], filename: str):
 
 
 def sync_data(args):
-    """Main sync function."""
+    """Main sync function.
+
+    Wrapped in a file lock so two concurrent invocations (e.g. an
+    overlapping cron run) can't race on last_sync/tokens state - one waits
+    up to 5s for the other to finish, then gives up rather than proceeding
+    unsafely.
+    """
     logger = logging.getLogger(__name__)
 
     try:
-        # Initialize clients
-        logger.info("Initializing Withings client...")
-        withings = WithingsClient()
-
-        garmin = None
-        if args.garmin:
-            logger.info("Initializing Garmin client...")
-            garmin = GarminClient()
-
-        # Determine date range
-        if args.from_date:
-            start_date = datetime.strptime(args.from_date, "%Y-%m-%d")
-        else:
-            # Use last sync date or default to 7 days ago
-            last_sync = withings.get_last_sync()
-            start_date = datetime.fromtimestamp(last_sync)
-
-        if args.to_date:
-            end_date = datetime.strptime(args.to_date, "%Y-%m-%d")
-        else:
-            end_date = datetime.now()
-
-        logger.info(f"Syncing data from {start_date.date()} to {end_date.date()}")
-
-        # Get measurements
-        measurements = withings.get_measurements(start_date, end_date)
-
-        if not measurements:
-            logger.info("No measurements found for the specified period")
-            return
-
-        logger.info(f"Found {len(measurements)} measurements")
-
-        # Get height for BMI calculation - reuse it if already present in the
-        # fetched measurements (avoids an extra Withings API call), otherwise
-        # fall back to a dedicated height lookup. A failure there shouldn't
-        # abort the whole sync (BMI is auxiliary), but must be logged rather
-        # than silently treated the same as "no height on file".
-        height = _extract_latest_height(measurements)
-        if height is None:
-            try:
-                height = withings.get_height()
-            except WithingsException as e:
-                logger.warning(f"Could not fetch height for BMI calculation: {e}")
-        if height:
-            logger.info(f"User height: {height:.2f} m")
-
-        # Save to JSON if requested
-        if args.output_json:
-            save_measurements_json(measurements, args.output_json)
-
-        # Save FIT file if requested - the full fetched range, not filtered
-        # by dedup below: this is an explicit export request, not "what's
-        # new for Garmin", so it can legitimately differ from what actually
-        # gets uploaded.
-        if args.output_fit:
-            fit_data = convert_to_fit(measurements, height)
-            with open(args.output_fit, "wb") as f:
-                f.write(fit_data)
-            logger.info(f"Saved FIT file to {args.output_fit}")
-
-        # Upload to Garmin if requested
-        if args.garmin:
-            assert garmin is not None  # constructed above whenever args.garmin
-
-            already_on_garmin, to_upload = _classify_for_garmin_upload(
-                measurements, withings, garmin, start_date, end_date, args.force
-            )
-
-            if already_on_garmin:
-                logger.info(
-                    f"{len(already_on_garmin)} measurement(s) already present "
-                    "on Garmin; skipping"
-                )
-                if not args.dry_run:
-                    withings.mark_synced(already_on_garmin)
-
-            upload_ok = True
-            if not to_upload:
-                logger.info("Nothing new to upload to Garmin")
-            elif args.dry_run:
-                logger.info(
-                    f"[dry-run] Would upload {len(to_upload)} measurement(s) "
-                    "to Garmin Connect"
-                )
-            else:
-                fit_data = convert_to_fit(to_upload, height)
-                logger.info(
-                    f"Uploading {len(to_upload)} measurement(s) to Garmin Connect..."
-                )
-                upload_ok = garmin.upload_file(fit_data)
-                if upload_ok:
-                    logger.info("Successfully uploaded to Garmin Connect")
-                    withings.mark_synced(to_upload)
-                else:
-                    logger.error("Failed to upload to Garmin Connect")
-
-            # Advance the cursor whenever the window was fully handled
-            # without an upload failure - including when there was nothing
-            # new to upload, so an already-fully-synced window doesn't get
-            # re-fetched and re-checked against Garmin on every run. Only a
-            # real upload failure withholds it, so that case retries next
-            # time. Automatic-range runs only (-f runs never advance it),
-            # and a dry run must not mutate any state.
-            if upload_ok and not args.from_date and not args.dry_run:
-                withings.set_last_sync()
-
-        logger.info("Sync completed successfully")
-
+        with FileLock(str(paths.sync_lock_file()), timeout=5):
+            return _sync_data_locked(args, logger)
+    except Timeout:
+        logger.error("Another sync is already running; aborting")
+        return 1
     except WithingsException as e:
         logger.error(f"Withings error: {e}")
         return 1
@@ -304,6 +207,117 @@ def sync_data(args):
         logger.error(f"Unexpected error: {e}", exc_info=args.verbose)
         return 1
 
+
+def _sync_data_locked(args, logger):
+    """The actual sync logic, called with the sync lock already held."""
+    # Initialize clients
+    logger.info("Initializing Withings client...")
+    withings = WithingsClient()
+
+    garmin = None
+    if args.garmin:
+        logger.info("Initializing Garmin client...")
+        garmin = GarminClient()
+
+    # Determine date range
+    if args.from_date:
+        start_date = datetime.strptime(args.from_date, "%Y-%m-%d")
+    else:
+        # Use last sync date or default to 7 days ago
+        last_sync = withings.get_last_sync()
+        start_date = datetime.fromtimestamp(last_sync)
+
+    if args.to_date:
+        end_date = datetime.strptime(args.to_date, "%Y-%m-%d")
+    else:
+        end_date = datetime.now()
+
+    logger.info(f"Syncing data from {start_date.date()} to {end_date.date()}")
+
+    # Get measurements
+    measurements = withings.get_measurements(start_date, end_date)
+
+    if not measurements:
+        logger.info("No measurements found for the specified period")
+        return
+
+    logger.info(f"Found {len(measurements)} measurements")
+
+    # Get height for BMI calculation - reuse it if already present in the
+    # fetched measurements (avoids an extra Withings API call), otherwise
+    # fall back to a dedicated height lookup. A failure there shouldn't
+    # abort the whole sync (BMI is auxiliary), but must be logged rather
+    # than silently treated the same as "no height on file".
+    height = _extract_latest_height(measurements)
+    if height is None:
+        try:
+            height = withings.get_height()
+        except WithingsException as e:
+            logger.warning(f"Could not fetch height for BMI calculation: {e}")
+    if height:
+        logger.info(f"User height: {height:.2f} m")
+
+    # Save to JSON if requested
+    if args.output_json:
+        save_measurements_json(measurements, args.output_json)
+
+    # Save FIT file if requested - the full fetched range, not filtered
+    # by dedup below: this is an explicit export request, not "what's
+    # new for Garmin", so it can legitimately differ from what actually
+    # gets uploaded.
+    if args.output_fit:
+        fit_data = convert_to_fit(measurements, height)
+        with open(args.output_fit, "wb") as f:
+            f.write(fit_data)
+        logger.info(f"Saved FIT file to {args.output_fit}")
+
+    # Upload to Garmin if requested
+    if args.garmin:
+        assert garmin is not None  # constructed above whenever args.garmin
+
+        already_on_garmin, to_upload = _classify_for_garmin_upload(
+            measurements, withings, garmin, start_date, end_date, args.force
+        )
+
+        if already_on_garmin:
+            logger.info(
+                f"{len(already_on_garmin)} measurement(s) already present "
+                "on Garmin; skipping"
+            )
+            if not args.dry_run:
+                withings.mark_synced(already_on_garmin)
+
+        upload_ok = True
+        if not to_upload:
+            logger.info("Nothing new to upload to Garmin")
+        elif args.dry_run:
+            logger.info(
+                f"[dry-run] Would upload {len(to_upload)} measurement(s) "
+                "to Garmin Connect"
+            )
+        else:
+            fit_data = convert_to_fit(to_upload, height)
+            logger.info(
+                f"Uploading {len(to_upload)} measurement(s) to Garmin Connect..."
+            )
+            upload_ok = garmin.upload_file(fit_data)
+            if upload_ok:
+                logger.info("Successfully uploaded to Garmin Connect")
+                withings.mark_synced(to_upload)
+            else:
+                logger.error("Failed to upload to Garmin Connect")
+
+        # Advance the cursor whenever the window was fully handled
+        # without an upload failure - including when there was nothing
+        # new to upload, so an already-fully-synced window doesn't get
+        # re-fetched and re-checked against Garmin on every run. Only a
+        # real upload failure withholds it, so that case retries next
+        # time. Automatic-range runs only (-f runs never advance it),
+        # and a dry run must not mutate any state.
+        if upload_ok and not args.from_date and not args.dry_run:
+            withings.set_last_sync()
+
+    logger.info("Sync completed successfully")
     return 0
 
 

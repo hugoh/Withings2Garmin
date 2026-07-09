@@ -103,3 +103,10 @@ def test_garmin_session_dir_falls_back_to_data_dir(monkeypatch, tmp_path):
     monkeypatch.setenv("WITHINGS2GARMIN_DATA_DIR", str(data_override))
 
     assert paths.garmin_session_dir() == data_override / "garmin_session"
+
+
+def test_sync_lock_file_lives_under_data_dir(monkeypatch, tmp_path):
+    data_override = tmp_path / "datadir"
+    monkeypatch.setenv("WITHINGS2GARMIN_DATA_DIR", str(data_override))
+
+    assert paths.sync_lock_file() == data_override / "sync.lock"

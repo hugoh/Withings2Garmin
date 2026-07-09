@@ -5,6 +5,7 @@ import sys
 from datetime import datetime
 from unittest.mock import patch
 
+import pytest
 from garmin_fit_sdk import Decoder, Stream
 
 from withings2garmin.garmin_client import GarminException
@@ -17,6 +18,14 @@ from withings2garmin.sync import (
     sync_data,
 )
 from withings2garmin.withings_client import WithingsException
+
+
+@pytest.fixture(autouse=True)
+def isolated_data_dir(monkeypatch, tmp_path):
+    # sync_data() takes a real file lock under paths.data_dir() - keep it
+    # (and anything else that falls back to platformdirs) inside tmp_path
+    # rather than touching the real user data directory.
+    monkeypatch.setenv("WITHINGS2GARMIN_DATA_DIR", str(tmp_path / "data"))
 
 
 def _decode(data: bytes):
@@ -148,6 +157,58 @@ def _args(**overrides):
     )
     defaults.update(overrides)
     return argparse.Namespace(**defaults)
+
+
+def test_sync_data_acquires_lock_at_expected_path_and_timeout(tmp_path):
+    with (
+        patch("withings2garmin.sync.FileLock") as MockFileLock,
+        patch("withings2garmin.sync.WithingsClient") as MockWithings,
+        patch(
+            "withings2garmin.sync.paths.sync_lock_file",
+            return_value=tmp_path / "sync.lock",
+        ),
+    ):
+        MockWithings.return_value.get_last_sync.return_value = 0
+        MockWithings.return_value.get_measurements.return_value = []
+
+        sync_data(_args())
+
+    MockFileLock.assert_called_once_with(str(tmp_path / "sync.lock"), timeout=5)
+
+
+def test_sync_data_lock_timeout_returns_1_without_running_sync():
+    from filelock import Timeout
+
+    with (
+        patch("withings2garmin.sync.FileLock") as MockFileLock,
+        patch("withings2garmin.sync.WithingsClient") as MockWithings,
+    ):
+        MockFileLock.return_value.__enter__.side_effect = Timeout("sync.lock")
+
+        result = sync_data(_args(garmin=True))
+
+    assert result == 1
+    MockWithings.assert_not_called()
+
+
+def test_real_filelock_blocks_a_second_concurrent_acquire(tmp_path):
+    # Real filelock library (not mocked), proving the actual mutual-
+    # exclusion mechanism works - combined with the mocked
+    # test_sync_data_lock_timeout_returns_1_without_running_sync above
+    # (which verifies sync_data()'s own Timeout handling), this gives
+    # genuine end-to-end confidence without paying sync_data()'s hardcoded
+    # 5s timeout in a test.
+    from filelock import FileLock, Timeout
+
+    lock_path = tmp_path / "sync.lock"
+    held_lock = FileLock(str(lock_path))
+    held_lock.acquire()
+    try:
+        contending_lock = FileLock(str(lock_path), timeout=0.1)
+        with pytest.raises(Timeout):
+            contending_lock.acquire()
+    finally:
+        held_lock.release()
 
 
 def test_sync_data_no_measurements_returns_none():

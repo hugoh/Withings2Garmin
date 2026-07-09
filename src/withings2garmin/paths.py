@@ -69,3 +69,9 @@ def withings_tokens_file() -> Path:
 
 def garmin_session_dir() -> Path:
     return _resolve_data_path(".garmin_session", "GARMIN_SESSION_DIR", "garmin_session")
+
+
+def sync_lock_file() -> Path:
+    """Lock file preventing two concurrent sync runs from racing on
+    last_sync/tokens state."""
+    return data_dir() / "sync.lock"

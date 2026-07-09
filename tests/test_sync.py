@@ -142,6 +142,8 @@ def _args(**overrides):
         garmin=False,
         output_json=None,
         output_fit=None,
+        dry_run=False,
+        force=False,
         verbose=False,
     )
     defaults.update(overrides)
@@ -159,25 +161,171 @@ def test_sync_data_no_measurements_returns_none():
     assert result is None
 
 
+def _measurement(grpid, **data):
+    return {
+        "grpid": grpid,
+        "timestamp": datetime(2024, 1, 1),
+        "measurements": data,
+    }
+
+
+def _garmin_sync_mocks(MockWithings, MockGarmin, measurements):
+    """Common setup: nothing locally tracked, nothing already on Garmin."""
+    withings = MockWithings.return_value
+    withings.get_last_sync.return_value = 0
+    withings.get_measurements.return_value = measurements
+    withings.get_height.return_value = 1.8
+    withings.filter_unsynced.return_value = measurements
+
+    garmin = MockGarmin.return_value
+    garmin.get_existing_weight_timestamps.return_value = set()
+    garmin.get_existing_blood_pressure_timestamps.return_value = set()
+    garmin.upload_file.return_value = True
+
+    return withings, garmin
+
+
 def test_sync_data_success_uploads_to_garmin():
     with (
         patch("withings2garmin.sync.WithingsClient") as MockWithings,
         patch("withings2garmin.sync.GarminClient") as MockGarmin,
     ):
-        withings = MockWithings.return_value
-        withings.get_last_sync.return_value = 0
-        withings.get_measurements.return_value = [
-            {"timestamp": datetime(2024, 1, 1), "measurements": {"weight": 80.0}}
-        ]
-        withings.get_height.return_value = 1.8
-
-        garmin = MockGarmin.return_value
-        garmin.upload_file.return_value = True
+        measurements = [_measurement("1", weight=80.0)]
+        withings, garmin = _garmin_sync_mocks(MockWithings, MockGarmin, measurements)
 
         result = sync_data(_args(garmin=True))
 
     assert result == 0
     garmin.upload_file.assert_called_once()
+    withings.mark_synced.assert_called_once_with(measurements)
+    withings.set_last_sync.assert_called_once()
+
+
+def test_sync_data_skips_already_locally_synced_measurements():
+    # filter_unsynced() (layer A) returning nothing means no candidates -
+    # the Garmin existence check (layer B) shouldn't even be called.
+    with (
+        patch("withings2garmin.sync.WithingsClient") as MockWithings,
+        patch("withings2garmin.sync.GarminClient") as MockGarmin,
+    ):
+        measurements = [_measurement("1", weight=80.0)]
+        withings, garmin = _garmin_sync_mocks(MockWithings, MockGarmin, measurements)
+        withings.filter_unsynced.return_value = []
+
+        result = sync_data(_args(garmin=True))
+
+    assert result == 0
+    garmin.get_existing_weight_timestamps.assert_not_called()
+    garmin.upload_file.assert_not_called()
+    withings.mark_synced.assert_not_called()
+    withings.set_last_sync.assert_called_once()
+
+
+def test_sync_data_skips_measurements_already_on_garmin():
+    # layer A doesn't know about it yet, but layer B finds a matching
+    # timestamp already on Garmin - should skip upload but backfill layer A.
+    with (
+        patch("withings2garmin.sync.WithingsClient") as MockWithings,
+        patch("withings2garmin.sync.GarminClient") as MockGarmin,
+    ):
+        measurements = [_measurement("1", weight=80.0)]
+        withings, garmin = _garmin_sync_mocks(MockWithings, MockGarmin, measurements)
+        garmin.get_existing_weight_timestamps.return_value = {datetime(2024, 1, 1)}
+
+        result = sync_data(_args(garmin=True))
+
+    assert result == 0
+    garmin.upload_file.assert_not_called()
+    withings.mark_synced.assert_called_once_with(measurements)
+    withings.set_last_sync.assert_called_once()
+
+
+def test_sync_data_partial_sync_uploads_only_new_measurements():
+    with (
+        patch("withings2garmin.sync.WithingsClient") as MockWithings,
+        patch("withings2garmin.sync.GarminClient") as MockGarmin,
+    ):
+        already_on_garmin = _measurement("1", weight=80.0)
+        new = {**_measurement("2", weight=81.0), "timestamp": datetime(2024, 1, 2)}
+        withings, garmin = _garmin_sync_mocks(
+            MockWithings, MockGarmin, [already_on_garmin, new]
+        )
+        garmin.get_existing_weight_timestamps.return_value = {datetime(2024, 1, 1)}
+
+        result = sync_data(_args(garmin=True))
+
+    assert result == 0
+    garmin.upload_file.assert_called_once()
+    withings.mark_synced.assert_any_call([already_on_garmin])
+    withings.mark_synced.assert_any_call([new])
+
+
+def test_sync_data_last_sync_not_advanced_on_upload_failure():
+    with (
+        patch("withings2garmin.sync.WithingsClient") as MockWithings,
+        patch("withings2garmin.sync.GarminClient") as MockGarmin,
+    ):
+        measurements = [_measurement("1", weight=80.0)]
+        withings, garmin = _garmin_sync_mocks(MockWithings, MockGarmin, measurements)
+        garmin.upload_file.return_value = False
+
+        result = sync_data(_args(garmin=True))
+
+    assert result == 0
+    withings.mark_synced.assert_not_called()
+    withings.set_last_sync.assert_not_called()
+
+
+def test_sync_data_dry_run_does_not_upload_or_mutate_state():
+    with (
+        patch("withings2garmin.sync.WithingsClient") as MockWithings,
+        patch("withings2garmin.sync.GarminClient") as MockGarmin,
+    ):
+        measurements = [_measurement("1", weight=80.0)]
+        withings, garmin = _garmin_sync_mocks(MockWithings, MockGarmin, measurements)
+
+        result = sync_data(_args(garmin=True, dry_run=True))
+
+    assert result == 0
+    garmin.upload_file.assert_not_called()
+    withings.mark_synced.assert_not_called()
+    withings.set_last_sync.assert_not_called()
+
+
+def test_sync_data_dry_run_reports_already_on_garmin_without_marking_synced():
+    with (
+        patch("withings2garmin.sync.WithingsClient") as MockWithings,
+        patch("withings2garmin.sync.GarminClient") as MockGarmin,
+    ):
+        measurements = [_measurement("1", weight=80.0)]
+        withings, garmin = _garmin_sync_mocks(MockWithings, MockGarmin, measurements)
+        garmin.get_existing_weight_timestamps.return_value = {datetime(2024, 1, 1)}
+
+        result = sync_data(_args(garmin=True, dry_run=True))
+
+    assert result == 0
+    withings.mark_synced.assert_not_called()
+
+
+def test_sync_data_force_bypasses_dedup_but_still_marks_synced():
+    with (
+        patch("withings2garmin.sync.WithingsClient") as MockWithings,
+        patch("withings2garmin.sync.GarminClient") as MockGarmin,
+    ):
+        measurements = [_measurement("1", weight=80.0)]
+        withings, garmin = _garmin_sync_mocks(MockWithings, MockGarmin, measurements)
+        # Even though layer A/B would both say "already synced"...
+        withings.filter_unsynced.return_value = []
+        garmin.get_existing_weight_timestamps.return_value = {datetime(2024, 1, 1)}
+
+        result = sync_data(_args(garmin=True, force=True))
+
+    assert result == 0
+    # ...--force uploads everything anyway, bypassing both checks entirely.
+    withings.filter_unsynced.assert_not_called()
+    garmin.get_existing_weight_timestamps.assert_not_called()
+    garmin.upload_file.assert_called_once()
+    withings.mark_synced.assert_called_once_with(measurements)
     withings.set_last_sync.assert_called_once()
 
 

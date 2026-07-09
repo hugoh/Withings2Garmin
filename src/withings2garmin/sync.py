@@ -120,6 +120,49 @@ def _extract_latest_height(measurements: List[Dict]) -> Optional[float]:
     return latest_height
 
 
+def _classify_for_garmin_upload(
+    measurements: List[Dict],
+    withings: WithingsClient,
+    garmin: GarminClient,
+    start_date: datetime,
+    end_date: datetime,
+    force: bool,
+) -> tuple[List[Dict], List[Dict]]:
+    """Split measurements into (already_on_garmin, to_upload) for a sync.
+
+    already_on_garmin: determined to already exist on Garmin (locally
+    tracked, or found via a live existence check) - not re-uploaded, but
+    still worth recording locally so future runs skip the live check too.
+    to_upload: measurements that should actually be uploaded.
+    """
+    if force:
+        return [], list(measurements)
+
+    candidates = withings.filter_unsynced(measurements)
+    if not candidates:
+        return [], []
+
+    existing_weight_ts = garmin.get_existing_weight_timestamps(start_date, end_date)
+    existing_bp_ts = garmin.get_existing_blood_pressure_timestamps(start_date, end_date)
+
+    already_on_garmin = []
+    to_upload = []
+    for m in candidates:
+        data = m["measurements"]
+        is_dup_weight = "weight" in data and m["timestamp"] in existing_weight_ts
+        is_dup_bp = (
+            "systolic_bp" in data
+            and "diastolic_bp" in data
+            and m["timestamp"] in existing_bp_ts
+        )
+        if is_dup_weight or is_dup_bp:
+            already_on_garmin.append(m)
+        else:
+            to_upload.append(m)
+
+    return already_on_garmin, to_upload
+
+
 def save_measurements_json(measurements: List[Dict], filename: str):
     """Save measurements to JSON file."""
     # Convert datetime objects to strings for JSON serialization
@@ -193,32 +236,61 @@ def sync_data(args):
         if args.output_json:
             save_measurements_json(measurements, args.output_json)
 
-        # Convert to FIT format if needed (for file output or Garmin upload)
-        fit_data = None
-        if args.output_fit or args.garmin:
-            logger.info("Converting measurements to FIT format...")
+        # Save FIT file if requested - the full fetched range, not filtered
+        # by dedup below: this is an explicit export request, not "what's
+        # new for Garmin", so it can legitimately differ from what actually
+        # gets uploaded.
+        if args.output_fit:
             fit_data = convert_to_fit(measurements, height)
-
-            if args.output_fit:
-                with open(args.output_fit, "wb") as f:
-                    f.write(fit_data)
-                logger.info(f"Saved FIT file to {args.output_fit}")
+            with open(args.output_fit, "wb") as f:
+                f.write(fit_data)
+            logger.info(f"Saved FIT file to {args.output_fit}")
 
         # Upload to Garmin if requested
         if args.garmin:
-            # fit_data is always set by this point: the block above already
-            # ran (its condition is `args.output_fit or args.garmin`, and
-            # args.garmin is true here).
-            assert fit_data is not None
-            logger.info("Uploading to Garmin Connect...")
-            if garmin and garmin.upload_file(fit_data):
-                logger.info("Successfully uploaded to Garmin Connect")
+            assert garmin is not None  # constructed above whenever args.garmin
 
-                # Update last sync time if upload was successful
-                if not args.from_date:  # Only update if we used automatic date range
-                    withings.set_last_sync()
+            already_on_garmin, to_upload = _classify_for_garmin_upload(
+                measurements, withings, garmin, start_date, end_date, args.force
+            )
+
+            if already_on_garmin:
+                logger.info(
+                    f"{len(already_on_garmin)} measurement(s) already present "
+                    "on Garmin; skipping"
+                )
+                if not args.dry_run:
+                    withings.mark_synced(already_on_garmin)
+
+            upload_ok = True
+            if not to_upload:
+                logger.info("Nothing new to upload to Garmin")
+            elif args.dry_run:
+                logger.info(
+                    f"[dry-run] Would upload {len(to_upload)} measurement(s) "
+                    "to Garmin Connect"
+                )
             else:
-                logger.error("Failed to upload to Garmin Connect")
+                fit_data = convert_to_fit(to_upload, height)
+                logger.info(
+                    f"Uploading {len(to_upload)} measurement(s) to Garmin Connect..."
+                )
+                upload_ok = garmin.upload_file(fit_data)
+                if upload_ok:
+                    logger.info("Successfully uploaded to Garmin Connect")
+                    withings.mark_synced(to_upload)
+                else:
+                    logger.error("Failed to upload to Garmin Connect")
+
+            # Advance the cursor whenever the window was fully handled
+            # without an upload failure - including when there was nothing
+            # new to upload, so an already-fully-synced window doesn't get
+            # re-fetched and re-checked against Garmin on every run. Only a
+            # real upload failure withholds it, so that case retries next
+            # time. Automatic-range runs only (-f runs never advance it),
+            # and a dry run must not mutate any state.
+            if upload_ok and not args.from_date and not args.dry_run:
+                withings.set_last_sync()
 
         logger.info("Sync completed successfully")
 
@@ -252,6 +324,20 @@ def main():
     )
     parser.add_argument("--output-json", help="Output measurements to JSON file")
     parser.add_argument("--output-fit", help="Save FIT file to specified path")
+
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help=(
+            "Show what would be synced to Garmin without uploading or "
+            "changing any state"
+        ),
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Bypass duplicate checks and upload all fetched measurements to Garmin",
+    )
 
     parser.add_argument(
         "--verbose", "-v", action="store_true", help="Enable verbose logging"

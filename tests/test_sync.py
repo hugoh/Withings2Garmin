@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 import sys
 from datetime import datetime
 from unittest.mock import patch
@@ -55,11 +56,35 @@ def test_load_env_file_sets_environment(tmp_path, monkeypatch):
 
     load_env_file(str(env_file))
 
-    assert __import__("os").environ["FOO_BAR"] == "baz"
+    assert os.environ["FOO_BAR"] == "baz"
 
 
 def test_load_env_file_missing_file_is_noop(tmp_path):
     load_env_file(str(tmp_path / "does-not-exist.env"))  # should not raise
+
+
+def test_load_env_file_preserves_trailing_quote_char_in_value(tmp_path, monkeypatch):
+    # Regression test: a hand-rolled parser's `.strip('"').strip("'")` would
+    # truncate an unquoted value that happens to end in an apostrophe (e.g. a
+    # password), since strip() removes ANY leading/trailing occurrence of
+    # those characters rather than only a deliberately matched wrapping pair.
+    env_file = tmp_path / ".env"
+    env_file.write_text("GARMIN_PASSWORD=P@ssw0rd's\n")
+    monkeypatch.delenv("GARMIN_PASSWORD", raising=False)
+
+    load_env_file(str(env_file))
+
+    assert os.environ["GARMIN_PASSWORD"] == "P@ssw0rd's"
+
+
+def test_load_env_file_does_not_override_existing_env_var(tmp_path, monkeypatch):
+    env_file = tmp_path / ".env"
+    env_file.write_text("FOO_BAR=from_dotenv\n")
+    monkeypatch.setenv("FOO_BAR", "from_real_env")
+
+    load_env_file(str(env_file))
+
+    assert os.environ["FOO_BAR"] == "from_real_env"
 
 
 def test_main_loads_env_file_before_configuring_logging(tmp_path, monkeypatch):

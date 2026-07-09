@@ -7,6 +7,8 @@ import os
 from datetime import datetime
 from typing import Dict, List, Optional
 
+from dotenv import load_dotenv
+
 from . import paths
 from .fit_encoder import FitEncoder
 from .garmin_client import GarminClient, GarminException
@@ -42,20 +44,18 @@ def setup_logging(verbose: bool = False):
 
 
 def load_env_file(env_file: str = ".env"):
-    """Load environment variables from .env file."""
-    if not os.path.exists(env_file):
-        logging.debug(f"Environment file '{env_file}' not found.")
-        return
+    """Load environment variables from .env file.
 
-    logging.debug(f"Loading environment file: {env_file}")
-    with open(env_file, "r") as f:
-        for line in f:
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                key, value = line.split("=", 1)
-                key = key.strip()
-                value = value.strip().strip('"').strip("'")
-                os.environ[key] = value
+    Real environment variables always take precedence over .env file
+    values (override=False) - deployment/CI environments that export
+    these explicitly shouldn't have them silently overridden by a
+    stray .env file.
+    """
+    loaded = load_dotenv(dotenv_path=env_file, override=False)
+    if loaded:
+        logging.debug(f"Loaded environment file: {env_file}")
+    else:
+        logging.debug(f"Environment file '{env_file}' not found.")
 
 
 def convert_to_fit(measurements: List[Dict], height: Optional[float] = None) -> bytes:

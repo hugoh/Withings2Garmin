@@ -13,6 +13,7 @@ dependencies = [
     "requests>=2.34.2",
     "garminconnect>=0.3.6",
     "platformdirs>=4.0",
+    "python-dotenv>=1.2.2",
 ]
 
 [project.scripts]

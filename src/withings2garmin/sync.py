@@ -7,9 +7,9 @@ import os
 from datetime import datetime
 from typing import Dict, List, Optional
 
-from fit_encoder import FitEncoder
-from garmin_client import GarminClient, GarminException
-from withings_client import WithingsClient, WithingsException
+from .fit_encoder import FitEncoder
+from .garmin_client import GarminClient, GarminException
+from .withings_client import WithingsClient, WithingsException
 
 
 def setup_logging(verbose: bool = False):

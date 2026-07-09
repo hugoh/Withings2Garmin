@@ -517,28 +517,36 @@ wheels = [
 [[package]]
 name = "withings2garmin"
 version = "1.0.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
+    { name = "garminconnect" },
+    { name = "requests" },
+]
+
+[package.dev-dependencies]
+dev = [
     { name = "black" },
     { name = "flake8-isort" },
     { name = "flake8-pyproject" },
-    { name = "garminconnect" },
     { name = "isort" },
     { name = "mypy" },
     { name = "pytest" },
-    { name = "requests" },
     { name = "types-requests" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "garminconnect", specifier = ">=0.2.7" },
+    { name = "requests", specifier = ">=2.31.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
     { name = "black", specifier = ">=25.1.0" },
     { name = "flake8-isort", specifier = ">=6.1.2" },
     { name = "flake8-pyproject", specifier = ">=1.2.3" },
-    { name = "garminconnect", specifier = ">=0.2.7" },
     { name = "isort", specifier = ">=6.0.1" },
     { name = "mypy", specifier = ">=1.17.0" },
     { name = "pytest", specifier = ">=8.4.1" },
-    { name = "requests", specifier = ">=2.31.0" },
     { name = "types-requests", specifier = ">=2.32.4.20250611" },
 ]

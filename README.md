@@ -22,17 +22,22 @@ A comprehensive Withings to Garmin Connect synchronization tool built with moder
 
 ## Installation
 
-This project requires Python 3.12+ and uses [uv](https://docs.astral.sh/uv/) for dependency management.
+This project requires Python 3.12+.
 
-### Install uv
+### Run without installing (uvx)
+
+With [uv](https://docs.astral.sh/uv/) installed, run the tool directly from PyPI
+without a local checkout:
 
 ```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
+uvx withings2garmin --garmin
 ```
 
-### Install the project
+### Install for local development
 
 ```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh  # install uv
+
 git clone https://github.com/sodelalbert/Withings2Garmin.git
 cd Withings2Garmin
 uv sync
@@ -77,25 +82,25 @@ All commands use `uv run` to ensure proper environment isolation and dependency 
 **Export measurements to JSON:**
 
 ```bash
-uv run sync.py --output-json measurements.json
+uv run withings2garmin --output-json measurements.json
 ```
 
 **Sync to Garmin Connect:**
 
 ```bash
-uv run sync.py --garmin
+uv run withings2garmin --garmin
 ```
 
 **Generate FIT file:**
 
 ```bash
-uv run sync.py --output-fit measurements.fit
+uv run withings2garmin --output-fit measurements.fit
 ```
 
 **Multiple outputs with Garmin sync:**
 
 ```bash
-uv run sync.py --garmin --output-json backup.json --output-fit backup.fit
+uv run withings2garmin --garmin --output-json backup.json --output-fit backup.fit
 ```
 
 ### Date Range Specification
@@ -103,19 +108,19 @@ uv run sync.py --garmin --output-json backup.json --output-fit backup.fit
 **Sync specific date range:**
 
 ```bash
-uv run sync.py --garmin -f 2024-01-01 -t 2024-01-31
+uv run withings2garmin --garmin -f 2024-01-01 -t 2024-01-31
 ```
 
 **Sync from specific date to today:**
 
 ```bash
-uv run sync.py --garmin -f 2024-01-01
+uv run withings2garmin --garmin -f 2024-01-01
 ```
 
 **Verbose logging for debugging:**
 
 ```bash
-uv run sync.py --garmin --verbose
+uv run withings2garmin --garmin --verbose
 ```
 
 ### Authentication Workflow
@@ -159,18 +164,20 @@ MFA code: [enter your 6-digit code]
 
 ```
 Withings2Garmin/
-├── sync.py                 # Main application entry point
-├── withings_client.py      # Withings API client with OAuth 2.0
-├── garmin_client.py        # Garmin Connect client with MFA support
-├── fit_encoder.py          # FIT file format encoder
-├── pyproject.toml          # Project configuration and dependencies
-├── uv.lock                 # Dependency lock file
-├── .env                    # Environment configuration (user-created)
+├── src/withings2garmin/
+│   ├── sync.py              # Main application entry point
+│   ├── withings_client.py   # Withings API client with OAuth 2.0
+│   ├── garmin_client.py     # Garmin Connect client with MFA support
+│   └── fit_encoder.py       # FIT file format encoder
+├── tests/                   # pytest test suite
+├── pyproject.toml           # Project configuration and dependencies
+├── uv.lock                  # Dependency lock file
+├── .env                     # Environment configuration (user-created)
 ├── sample/
-│   └── .env.example        # Environment template
-├── .withings_tokens.json   # Withings OAuth tokens (auto-created)
-├── .garmin_session/        # Garmin session data (auto-created)
-└── logs/                   # Application logs (auto-created)
+│   └── .env.example         # Environment template
+├── .withings_tokens.json    # Withings OAuth tokens (auto-created)
+├── .garmin_session/         # Garmin session data (auto-created)
+└── logs/                    # Application logs (auto-created)
 ```
 
 ## Dependencies
@@ -180,7 +187,8 @@ Core dependencies managed through `pyproject.toml`:
 - **requests** (≥2.31.0) - HTTP client for API communications
 - **garminconnect** (≥0.2.7) - Garmin Connect authentication and API interface
 
-Development dependencies:
+Development dependencies (`[dependency-groups.dev]`, installed automatically by
+`uv sync` but not part of the published package):
 
 - **black** (≥25.1.0) - Code formatting
 - **mypy** (≥1.17.0) - Static type checking
@@ -191,7 +199,7 @@ Development dependencies:
 ## Command Line Reference
 
 ```
-usage: sync.py [-h] [-f FROM_DATE] [-t TO_DATE] [--garmin]
+usage: withings2garmin [-h] [-f FROM_DATE] [-t TO_DATE] [--garmin]
                [--output-json OUTPUT_JSON] [--output-fit OUTPUT_FIT] [--verbose]
 
 options:
@@ -260,7 +268,7 @@ The application generates standard FIT files compatible with:
 ```bash
 # Remove invalid tokens and re-authenticate
 rm .withings_tokens.json
-uv run sync.py --garmin
+uv run withings2garmin --garmin
 ```
 
 **Garmin session issues:**
@@ -268,7 +276,7 @@ uv run sync.py --garmin
 ```bash
 # Clear Garmin session and re-authenticate
 rm -rf .garmin_session
-uv run sync.py --garmin
+uv run withings2garmin --garmin
 ```
 
 ### Data Issues

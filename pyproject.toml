@@ -1,5 +1,5 @@
 [project]
-name = "Withings2Garmin"
+name = "withings2garmin"
 version = "1.0.0"
 description = "Simplified Withings to Garmin sync tool"
 authors = [
@@ -12,7 +12,20 @@ requires-python = ">=3.12"
 dependencies = [
     "requests>=2.31.0",
     "garminconnect>=0.2.7",
-    # Development dependencies
+]
+
+[project.scripts]
+withings2garmin = "withings2garmin.sync:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/withings2garmin"]
+
+[dependency-groups]
+dev = [
     "black>=25.1.0",
     "mypy>=1.17.0",
     "flake8-pyproject>=1.2.3",

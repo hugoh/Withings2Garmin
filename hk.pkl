@@ -38,8 +38,8 @@ local linters = new Mapping<String, Step> {
         check_diff = "uv run ruff format --quiet --force-exclude --diff {{ files }}"
         fix = "uv run ruff format --quiet --force-exclude {{ files }}"
     }
-    ["mypy"] = (Builtins.mypy) {
-        check = "uv run mypy {{ files }}"
+    ["ty"] = (Builtins.ty) {
+        check = "uv run ty check {{ files }}"
     }
 }
 

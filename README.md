@@ -217,6 +217,15 @@ run `hk install` once in this repo to wire that up locally.
 Dependencies are managed in `pyproject.toml`; run `uv lock --upgrade && uv sync`
 to update them.
 
+### Releases
+
+Commit messages must follow [Conventional Commits](https://www.conventionalcommits.org/)
+(enforced by an `hk` `commit-msg` hook — `feat: ...`, `fix: ...`, etc.).
+Pushing to `master` automatically bumps the version and publishes a GitHub
+Release when a commit warrants it: `feat:` → minor, `fix:` → patch,
+`BREAKING CHANGE:`/`!` → major. The package version itself is derived from
+the latest git tag (via `hatch-vcs`) — nothing to bump by hand.
+
 ## License
 
 MIT — see `pyproject.toml`.

@@ -59,4 +59,11 @@ hooks {
         fix = true
         steps = linters
     }
+    // Enforces Conventional Commits, since release.yml's auto-tagging
+    // depends on commit messages following that format.
+    ["commit-msg"] {
+        steps {
+            ["conventional-commit"] = Builtins.check_conventional_commit
+        }
+    }
 }

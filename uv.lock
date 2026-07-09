@@ -577,7 +577,6 @@ wheels = [
 
 [[package]]
 name = "withings2garmin"
-version = "1.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "garminconnect" },

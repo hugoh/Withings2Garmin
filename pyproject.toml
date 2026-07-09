@@ -1,6 +1,6 @@
 [project]
 name = "withings2garmin"
-version = "1.0.0"
+dynamic = ["version"]
 description = "Simplified Withings to Garmin sync tool"
 authors = [
     { name = "Albert Sodel", email = "sodelalbert@gmail.com" }
@@ -19,7 +19,7 @@ dependencies = [
 withings2garmin = "withings2garmin.sync:main"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
 
 [dependency-groups]
@@ -32,6 +32,9 @@ dev = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/withings2garmin"]
+
+[tool.hatch.version]
+source = "vcs"
 
 [tool.ruff]
 line-length = 88

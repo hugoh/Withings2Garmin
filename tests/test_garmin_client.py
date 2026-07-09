@@ -67,6 +67,32 @@ def test_upload_file_failure_returns_false():
         assert client.upload_file(b"FITDATA") is False
 
 
+def test_upload_file_session_expired_mid_run_returns_false():
+    # garminconnect's request layer raises this from upload_activity() when
+    # the session has expired since login() - must not escape as an
+    # unwrapped exception past this method.
+    with patch("withings2garmin.garmin_client.Garmin") as MockGarmin:
+        instance = MockGarmin.return_value
+        instance.login.return_value = (None, None)
+        client = GarminClient()
+
+        instance.upload_activity.side_effect = GarminConnectAuthenticationError(
+            "session expired"
+        )
+        assert client.upload_file(b"FITDATA") is False
+
+
+def test_authenticate_stale_token_store_raises_garmin_exception():
+    # garminconnect's login() re-raises a bare FileNotFoundError unchanged
+    # (e.g. a stale/corrupt token store path) rather than wrapping it.
+    with patch("withings2garmin.garmin_client.Garmin") as MockGarmin:
+        instance = MockGarmin.return_value
+        instance.login.side_effect = FileNotFoundError("no such token store")
+
+        with pytest.raises(GarminException):
+            GarminClient()
+
+
 def test_test_connection_returns_full_name():
     with patch("withings2garmin.garmin_client.Garmin") as MockGarmin:
         instance = MockGarmin.return_value

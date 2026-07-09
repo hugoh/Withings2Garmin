@@ -74,6 +74,10 @@ class GarminClient:
             GarminConnectAuthenticationError,
             GarminConnectConnectionError,
             GarminConnectTooManyRequestsError,
+            # garminconnect's login() re-raises a bare FileNotFoundError
+            # unchanged (e.g. a stale/corrupt token store path) instead of
+            # wrapping it in one of the exception types above.
+            FileNotFoundError,
         ) as e:
             raise GarminException(f"Garmin authentication failed: {e}")
 
@@ -94,6 +98,10 @@ class GarminClient:
             GarminConnectConnectionError,
             GarminConnectTooManyRequestsError,
             GarminConnectInvalidFileFormatError,
+            # The session can expire between construction and a later
+            # upload call (e.g. a long-running sync); garminconnect raises
+            # this from its internal request layer when that happens.
+            GarminConnectAuthenticationError,
         ) as e:
             logger.error(f"Failed to upload file to Garmin Connect: {e}")
             return False

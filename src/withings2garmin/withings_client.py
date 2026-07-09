@@ -30,12 +30,15 @@ GETMEAS_URL = "https://wbsapi.withings.net/measure?action=getmeas"
 # Withings app. Setting your own via WITHINGS_CLIENT_ID/WITHINGS_CLIENT_SECRET
 # is optional and overrides these. Not a secret in the traditional sense:
 # this is a shared, rate-limited app registration meant for exactly this
-# kind of reuse (same pattern as upstream jaroslawhartman/withings-sync,
-# whose callback page this project's default WITHINGS_CALLBACK_URL already
-# points at).
+# kind of reuse (same pattern as upstream jaroslawhartman/withings-sync).
+# DEFAULT_CALLBACK_URL must match this app's actual registered redirect_uri
+# in Withings' developer console, or the OAuth authorize request is rejected.
 DEFAULT_CLIENT_ID = "ac5f36d9fb0b8a4f05f340fc86e77b7cd21ecd551ca0cc3ed465303637ed82ea"
 DEFAULT_CLIENT_SECRET = (
     "56a69ccff7ab4c3c17e63bea82e1f2b181ea1154390609019f37fe917a428d65"
+)
+DEFAULT_CALLBACK_URL = (
+    "https://jaroslawhartman.github.io/withings-sync/contrib/withings.html"
 )
 
 # Retry only network-level failures (connection refused, DNS, timeout) -
@@ -68,9 +71,7 @@ class WithingsClient:
         self.client_secret = (
             os.getenv("WITHINGS_CLIENT_SECRET") or DEFAULT_CLIENT_SECRET
         )
-        self.callback_url = os.getenv(
-            "WITHINGS_CALLBACK_URL", "http://localhost:8080/callback"
-        )
+        self.callback_url = os.getenv("WITHINGS_CALLBACK_URL") or DEFAULT_CALLBACK_URL
 
         if not self.client_id or not self.client_secret:
             raise WithingsException(

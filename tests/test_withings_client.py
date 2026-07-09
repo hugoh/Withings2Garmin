@@ -35,18 +35,27 @@ def _client_with_tokens(tokens):
 
 
 def test_missing_env_vars_falls_back_to_default_credentials(monkeypatch):
-    # WITHINGS_CLIENT_ID/SECRET are optional - unset, the client falls back
-    # to the shared DEFAULT_CLIENT_ID/DEFAULT_CLIENT_SECRET rather than
-    # requiring every user to register their own Withings app.
-    from withings2garmin.withings_client import DEFAULT_CLIENT_ID, DEFAULT_CLIENT_SECRET
+    # WITHINGS_CLIENT_ID/SECRET/CALLBACK_URL are optional - unset, the
+    # client falls back to the shared DEFAULT_CLIENT_ID/DEFAULT_CLIENT_SECRET/
+    # DEFAULT_CALLBACK_URL rather than requiring every user to register
+    # their own Withings app. The callback URL must match what's actually
+    # registered for that shared app, or Withings rejects the authorize
+    # request with a redirect_uri mismatch.
+    from withings2garmin.withings_client import (
+        DEFAULT_CALLBACK_URL,
+        DEFAULT_CLIENT_ID,
+        DEFAULT_CLIENT_SECRET,
+    )
 
     monkeypatch.delenv("WITHINGS_CLIENT_ID", raising=False)
     monkeypatch.delenv("WITHINGS_CLIENT_SECRET", raising=False)
+    monkeypatch.delenv("WITHINGS_CALLBACK_URL", raising=False)
 
     client = _client_with_tokens({"access_token": "a", "refresh_token": "r"})
 
     assert client.client_id == DEFAULT_CLIENT_ID
     assert client.client_secret == DEFAULT_CLIENT_SECRET
+    assert client.callback_url == DEFAULT_CALLBACK_URL
 
 
 def test_missing_credentials_raises_if_defaults_also_unset(monkeypatch):

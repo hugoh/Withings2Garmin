@@ -81,10 +81,13 @@ WITHINGS_CALLBACK_URL=https://jaroslawhartman.github.io/withings-sync/contrib/wi
 
 ### Withings API Setup (optional)
 
-`WITHINGS_CLIENT_ID`/`WITHINGS_CLIENT_SECRET` are **optional**: if unset, this
-tool falls back to a shared Withings developer-app registration baked into
-`withings_client.py` (`DEFAULT_CLIENT_ID`/`DEFAULT_CLIENT_SECRET`), the same
-pattern upstream [jaroslawhartman/withings-sync](https://github.com/jaroslawhartman/withings-sync)
+`WITHINGS_CLIENT_ID`/`WITHINGS_CLIENT_SECRET`/`WITHINGS_CALLBACK_URL` are
+**optional**: if unset, this tool falls back to a shared Withings developer-
+app registration baked into `withings_client.py` (`DEFAULT_CLIENT_ID`/
+`DEFAULT_CLIENT_SECRET`/`DEFAULT_CALLBACK_URL`, the latter currently
+`https://jaroslawhartman.github.io/withings-sync/contrib/withings.html`), the
+same pattern upstream
+[jaroslawhartman/withings-sync](https://github.com/jaroslawhartman/withings-sync)
 uses for its own default — most users don't need to register their own app.
 That shared app is rate-limited across everyone using it, so if you hit
 limits or want your own quota, register your own:

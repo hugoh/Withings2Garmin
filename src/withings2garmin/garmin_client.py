@@ -71,7 +71,7 @@ class GarminClient:
         """Authenticate with Garmin Connect."""
         try:
             self.client.login(self.session_file)
-            logger.info("Authenticated with Garmin Connect")
+            logger.debug("Authenticated with Garmin Connect")
         except (
             GarminConnectAuthenticationError,
             GarminConnectConnectionError,
@@ -93,7 +93,7 @@ class GarminClient:
                 fit_path.write_bytes(file_data)
                 self.client.upload_activity(str(fit_path))
 
-            logger.info(f"Successfully uploaded {filename} to Garmin Connect")
+            logger.debug(f"Successfully uploaded {filename} to Garmin Connect")
             return True
 
         except (

@@ -184,7 +184,7 @@ class WithingsClient:
             }
         )
 
-        logger.info("Successfully obtained access token")
+        logger.debug("Successfully obtained access token")
 
     @_retry_on_transient_network_errors
     def _refresh_access_token(self):
@@ -212,7 +212,7 @@ class WithingsClient:
                     "user_id": body.get("userid"),
                 }
             )
-            logger.info("Successfully refreshed access token")
+            logger.debug("Successfully refreshed access token")
         else:
             logger.warning(f"Token refresh failed: {data}")
 
@@ -233,7 +233,7 @@ class WithingsClient:
             raise WithingsException(f"Measurements request failed: {data}")
 
         measurements = data.get("body", {}).get("measuregrps", [])
-        logger.info(f"Retrieved {len(measurements)} measurement groups")
+        logger.debug(f"Retrieved {len(measurements)} measurement groups")
 
         return self._process_measurements(measurements)
 
@@ -354,4 +354,4 @@ class WithingsClient:
         """Set last sync timestamp to now."""
         self.tokens["last_sync"] = int(time.time())
         self._save_tokens()
-        logger.info("Updated last sync timestamp")
+        logger.debug("Updated last sync timestamp")

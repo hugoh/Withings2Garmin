@@ -39,7 +39,7 @@ def setup_logging(verbose: bool = False):
     )
 
     # Log the configuration
-    logging.info(f"Log file: {log_filename}")
+    logging.debug(f"Log file: {log_filename}")
     if verbose:
         logging.debug("Verbose logging enabled")
 
@@ -211,12 +211,12 @@ def sync_data(args):
 def _sync_data_locked(args, logger):
     """The actual sync logic, called with the sync lock already held."""
     # Initialize clients
-    logger.info("Initializing Withings client...")
+    logger.debug("Initializing Withings client...")
     withings = WithingsClient()
 
     garmin = None
     if args.garmin:
-        logger.info("Initializing Garmin client...")
+        logger.debug("Initializing Garmin client...")
         garmin = GarminClient()
 
     # Determine date range
@@ -255,7 +255,7 @@ def _sync_data_locked(args, logger):
         except WithingsException as e:
             logger.warning(f"Could not fetch height for BMI calculation: {e}")
     if height:
-        logger.info(f"User height: {height:.2f} m")
+        logger.debug(f"User height: {height:.2f} m")
 
     # Save to JSON if requested
     if args.output_json:

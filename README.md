@@ -13,6 +13,10 @@
 >   by eitanbehar in their fork
 >   ([eitanbehar/Withings2Garmin](https://github.com/eitanbehar/Withings2Garmin),
 >   branch `garmin-bmi-2026-working`).
+>
+> Most of the code on top of that baseline (packaging, the garminconnect
+> migration itself, path resolution, tests) was assisted by an LLM
+> (Claude Code).
 
 Syncs Withings body measurements (weight, body composition, blood pressure)
 to Garmin Connect as FIT files.

@@ -166,7 +166,7 @@ def test_get_existing_weight_timestamps_degrades_gracefully_on_api_failure():
     assert result == set()
 
 
-def test_get_existing_weight_timestamps_skips_unparseable_entries():
+def test_get_existing_weight_timestamps_skips_unparsable_entries():
     client, instance = _client()
     instance.get_body_composition.return_value = {
         "dateWeightList": [{"date": "not-a-date"}, {}]

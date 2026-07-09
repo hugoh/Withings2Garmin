@@ -29,6 +29,9 @@ to Garmin Connect as FIT files.
   Withings weight/height
 - Output to JSON and/or FIT file, in addition to (or instead of) uploading to
   Garmin Connect
+- Duplicate-safe: tracks what it's already uploaded and checks what Garmin
+  already has before syncing (see [Sync Safety](#sync-safety)), retries
+  transient network failures, and won't corrupt its own state on a crash
 
 ## Installation
 
@@ -120,6 +123,9 @@ uv run withings2garmin --garmin
 # Sync a specific date range and also save JSON/FIT files locally
 uv run withings2garmin --garmin -f 2024-01-01 -t 2024-01-31 \
     --output-json backup.json --output-fit backup.fit
+
+# See what would be uploaded without actually uploading or changing any state
+uv run withings2garmin --garmin --dry-run --verbose
 ```
 
 ### Authentication Workflow
@@ -148,6 +154,42 @@ into the terminal. Tokens are then saved for future runs.
 
 If MFA is enabled on your Garmin account, you'll be prompted for `MFA code:`
 on first login; the session is then saved locally for future runs.
+
+## Sync Safety
+
+By default (no `-f`), each run only fetches data since the last successful
+sync, tracked in the Withings tokens file — a fresh install with no prior
+sync defaults to the last 24 hours, not full history (pass `-f` explicitly
+to backfill further back).
+
+Within whatever range gets fetched, two independent checks keep a Garmin
+upload from creating duplicates:
+
+1. **Local tracking** — this tool records which Withings measurements it's
+   already uploaded, so re-running over an overlapping range (e.g. a manual
+   `-f`/`-t`, or a retry) skips anything it already pushed.
+2. **Garmin-side check** — for whatever's left, it queries Garmin Connect's
+   actual existing weight/blood-pressure entries for that date range and
+   skips anything already there, regardless of source (another sync tool, a
+   manual entry, a different machine). Best-effort: if this check fails, it
+   logs a warning and falls back to uploading (layer 1 is still the primary
+   guarantee).
+
+Two flags for working with this:
+
+- `--dry-run` — report what would be uploaded/skipped without uploading or
+  changing any local state. Useful for a sanity check before trusting an
+  automated (e.g. cron) run.
+- `--force` — bypass both checks for one run and upload everything fetched,
+  e.g. if you know Garmin lost some data and want to intentionally re-push
+  it. Still records what it uploaded, so a normal run afterward won't
+  re-trigger on the same data.
+
+Beyond dedup: transient Withings API failures (connection errors, timeouts)
+are retried automatically with backoff; the tokens file is written
+atomically (a crash mid-write can't corrupt it); and a file lock prevents
+two concurrent runs (e.g. an overlapping cron job) from racing on the same
+state.
 
 ## Logging
 

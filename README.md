@@ -60,7 +60,13 @@ uv sync
 
 ### Environment Setup
 
-Copy the example environment file and configure your credentials:
+Run `withings2garmin --edit-config` for an interactive prompt that saves
+your Garmin (and optionally Withings) credentials to the right config file
+for you — no need to find or hand-edit it, which is especially handy for the
+`uvx` no-checkout flow where there's no repo to find `sample/.env.example`
+in. Passwords/secrets are entered without being echoed to the terminal.
+
+Alternatively, copy the example environment file and configure it by hand:
 
 ```bash
 cp sample/.env.example .env

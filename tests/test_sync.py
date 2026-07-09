@@ -12,6 +12,7 @@ from withings2garmin.garmin_client import GarminException
 from withings2garmin.sync import (
     _extract_latest_height,
     convert_to_fit,
+    edit_config,
     load_env_file,
     main,
     save_measurements_json,
@@ -142,6 +143,111 @@ def test_main_loads_env_file_before_configuring_logging(tmp_path, monkeypatch):
 
     mock_sync_data.assert_called_once()
     assert log_dir.is_dir()
+
+
+def test_edit_config_writes_new_credentials_to_fresh_file(tmp_path, monkeypatch):
+    env_path = tmp_path / "config.env"
+    monkeypatch.setenv("WITHINGS2GARMIN_CONFIG_FILE", str(env_path))
+
+    with (
+        patch("builtins.input", side_effect=["user@example.com", "n"]),
+        patch("getpass.getpass", return_value="hunter2"),
+    ):
+        assert edit_config() == 0
+
+    content = env_path.read_text()
+    assert "GARMIN_USERNAME='user@example.com'" in content
+    assert "GARMIN_PASSWORD='hunter2'" in content
+    assert "WITHINGS_CLIENT_ID" not in content
+
+
+def test_edit_config_preserves_unrelated_existing_lines(tmp_path, monkeypatch):
+    env_path = tmp_path / "config.env"
+    env_path.write_text("WITHINGS2GARMIN_LOG_DIR=/custom/logs\n")
+    monkeypatch.setenv("WITHINGS2GARMIN_CONFIG_FILE", str(env_path))
+
+    with (
+        patch("builtins.input", side_effect=["user@example.com", "n"]),
+        patch("getpass.getpass", return_value="hunter2"),
+    ):
+        edit_config()
+
+    assert "WITHINGS2GARMIN_LOG_DIR=/custom/logs" in env_path.read_text()
+
+
+def test_edit_config_blank_input_keeps_existing_value(tmp_path, monkeypatch):
+    env_path = tmp_path / "config.env"
+    env_path.write_text("GARMIN_USERNAME=old_user\nGARMIN_PASSWORD=old_pass\n")
+    monkeypatch.setenv("WITHINGS2GARMIN_CONFIG_FILE", str(env_path))
+
+    with (
+        patch("builtins.input", side_effect=["", "n"]),
+        patch("getpass.getpass", return_value=""),
+    ):
+        edit_config()
+
+    content = env_path.read_text()
+    assert "GARMIN_USERNAME='old_user'" in content
+    assert "GARMIN_PASSWORD='old_pass'" in content
+
+
+def test_edit_config_declining_withings_prompt_leaves_it_unset(tmp_path, monkeypatch):
+    env_path = tmp_path / "config.env"
+    monkeypatch.setenv("WITHINGS2GARMIN_CONFIG_FILE", str(env_path))
+
+    with (
+        patch("builtins.input", side_effect=["user@example.com", "n"]),
+        patch("getpass.getpass", return_value="hunter2"),
+    ):
+        edit_config()
+
+    assert "WITHINGS_CLIENT_ID" not in env_path.read_text()
+
+
+def test_edit_config_accepting_withings_prompt_writes_custom_app(tmp_path, monkeypatch):
+    env_path = tmp_path / "config.env"
+    monkeypatch.setenv("WITHINGS2GARMIN_CONFIG_FILE", str(env_path))
+
+    with (
+        patch(
+            "builtins.input",
+            side_effect=["user@example.com", "y", "my-client-id", "https://cb"],
+        ),
+        patch("getpass.getpass", side_effect=["hunter2", "my-client-secret"]),
+    ):
+        edit_config()
+
+    content = env_path.read_text()
+    assert "WITHINGS_CLIENT_ID='my-client-id'" in content
+    assert "WITHINGS_CLIENT_SECRET='my-client-secret'" in content
+    assert "WITHINGS_CALLBACK_URL='https://cb'" in content
+
+
+@pytest.mark.skipif(os.name == "nt", reason="chmod semantics differ on Windows")
+def test_edit_config_sets_restrictive_file_permissions(tmp_path, monkeypatch):
+    env_path = tmp_path / "config.env"
+    monkeypatch.setenv("WITHINGS2GARMIN_CONFIG_FILE", str(env_path))
+
+    with (
+        patch("builtins.input", side_effect=["user@example.com", "n"]),
+        patch("getpass.getpass", return_value="hunter2"),
+    ):
+        edit_config()
+
+    assert (env_path.stat().st_mode & 0o777) == 0o600
+
+
+def test_main_edit_config_flag_skips_sync(monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["withings2garmin", "--edit-config"])
+
+    with (
+        patch("withings2garmin.sync.edit_config", return_value=0) as mock_edit_config,
+        patch("withings2garmin.sync.sync_data") as mock_sync_data,
+    ):
+        assert main() == 0
+
+    mock_edit_config.assert_called_once()
+    mock_sync_data.assert_not_called()
 
 
 def _args(**overrides):

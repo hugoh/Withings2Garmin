@@ -1,13 +1,14 @@
 """Main sync application."""
 
 import argparse
+import getpass
 import json
 import logging
 import os
 from datetime import datetime
 from typing import Dict, List, Optional
 
-from dotenv import load_dotenv
+from dotenv import dotenv_values, load_dotenv, set_key
 from filelock import FileLock, Timeout
 
 from . import paths
@@ -57,6 +58,86 @@ def load_env_file(env_file: str = ".env"):
         logging.debug(f"Loaded environment file: {env_file}")
     else:
         logging.debug(f"Environment file '{env_file}' not found.")
+
+
+def _prompt_with_default(prompt: str, current: Optional[str]) -> str:
+    """Prompt for a value, showing the current one (if any) as the default."""
+    suffix = f" [{current}]" if current else ""
+    value = input(f"{prompt}{suffix}: ").strip()
+    return value or current or ""
+
+
+def _prompt_secret_with_default(prompt: str, current: Optional[str]) -> str:
+    """Prompt for a secret value (not echoed), keeping the current on blank input."""
+    suffix = " (leave blank to keep current)" if current else ""
+    value = getpass.getpass(f"{prompt}{suffix}: ").strip()
+    return value or current or ""
+
+
+def edit_config() -> int:
+    """Interactively prompt for credentials and save them to the resolved
+    config file (see paths.resolve_env_file()), for users who'd rather not
+    hand-edit it - notably the `uvx withings2garmin` no-checkout flow, where
+    there's no repo to find sample/.env.example in."""
+    env_path = str(paths.resolve_env_file())
+    current = dotenv_values(env_path) if os.path.exists(env_path) else {}
+
+    print(f"Configuring {env_path}\n")
+
+    username = _prompt_with_default(
+        "Garmin username/email", current.get("GARMIN_USERNAME")
+    )
+    while not username:
+        print("Garmin username is required.")
+        username = _prompt_with_default(
+            "Garmin username/email", current.get("GARMIN_USERNAME")
+        )
+
+    password = _prompt_secret_with_default(
+        "Garmin password", current.get("GARMIN_PASSWORD")
+    )
+    while not password:
+        print("Garmin password is required.")
+        password = _prompt_secret_with_default(
+            "Garmin password", current.get("GARMIN_PASSWORD")
+        )
+
+    to_write = {"GARMIN_USERNAME": username, "GARMIN_PASSWORD": password}
+
+    configure_withings = (
+        input(
+            "\nConfigure a custom Withings API app instead of the shared "
+            "default? [y/N]: "
+        )
+        .strip()
+        .lower()
+    )
+    if configure_withings == "y":
+        client_id = _prompt_with_default(
+            "Withings client ID", current.get("WITHINGS_CLIENT_ID")
+        )
+        client_secret = _prompt_secret_with_default(
+            "Withings client secret", current.get("WITHINGS_CLIENT_SECRET")
+        )
+        callback_url = _prompt_with_default(
+            "Withings callback URL", current.get("WITHINGS_CALLBACK_URL")
+        )
+        for key, value in (
+            ("WITHINGS_CLIENT_ID", client_id),
+            ("WITHINGS_CLIENT_SECRET", client_secret),
+            ("WITHINGS_CALLBACK_URL", callback_url),
+        ):
+            if value:
+                to_write[key] = value
+
+    for key, value in to_write.items():
+        set_key(env_path, key, value)
+
+    if os.name != "nt":
+        os.chmod(env_path, 0o600)
+
+    print(f"\nSaved configuration to {env_path}")
+    return 0
 
 
 def convert_to_fit(measurements: List[Dict], height: Optional[float] = None) -> bytes:
@@ -356,8 +437,19 @@ def main():
     parser.add_argument(
         "--verbose", "-v", action="store_true", help="Enable verbose logging"
     )
+    parser.add_argument(
+        "--edit-config",
+        action="store_true",
+        help=(
+            "Interactively enter Garmin/Withings credentials and save them "
+            "to the resolved config file, then exit"
+        ),
+    )
 
     args = parser.parse_args()
+
+    if args.edit_config:
+        return edit_config()
 
     # Must run before setup_logging(): .env can set WITHINGS2GARMIN_LOG_DIR,
     # which setup_logging() -> paths.log_dir() reads from os.environ.

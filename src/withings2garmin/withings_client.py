@@ -191,7 +191,7 @@ class WithingsClient:
         data = response.json()
 
         if data.get("status") != 0:
-            return None
+            raise WithingsException(f"Height request failed: {data}")
 
         measurements = data.get("body", {}).get("measuregrps", [])
         if not measurements:

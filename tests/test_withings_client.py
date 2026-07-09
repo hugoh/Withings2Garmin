@@ -105,6 +105,18 @@ def test_get_measurements_raises_on_error_status():
             client.get_measurements(datetime(2024, 1, 1), datetime(2024, 1, 2))
 
 
+def test_get_height_raises_on_error_status():
+    # get_height() must raise like get_measurements() does for the identical
+    # failure signature, rather than silently returning None - indistinguish-
+    # able from "no height recorded" and previously logged nowhere.
+    client = _client_with_tokens({"access_token": "a", "refresh_token": "r"})
+
+    with patch("withings2garmin.withings_client.requests.post") as mock_post:
+        mock_post.return_value = MagicMock(json=lambda: {"status": 1})
+        with pytest.raises(WithingsException):
+            client.get_height()
+
+
 def test_get_height_returns_latest_value():
     client = _client_with_tokens({"access_token": "a", "refresh_token": "r"})
 

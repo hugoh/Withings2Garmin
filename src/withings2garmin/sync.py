@@ -104,6 +104,22 @@ def convert_to_fit(measurements: List[Dict], height: Optional[float] = None) -> 
     return encoder.finalize()
 
 
+def _extract_latest_height(measurements: List[Dict]) -> Optional[float]:
+    """Find the most recent height reading already present in fetched measurements."""
+    latest_height = None
+    latest_timestamp = None
+
+    for entry in measurements:
+        height = entry["measurements"].get("height")
+        if height is None:
+            continue
+        if latest_timestamp is None or entry["timestamp"] > latest_timestamp:
+            latest_height = height
+            latest_timestamp = entry["timestamp"]
+
+    return latest_height
+
+
 def save_measurements_json(measurements: List[Dict], filename: str):
     """Save measurements to JSON file."""
     # Convert datetime objects to strings for JSON serialization
@@ -159,8 +175,17 @@ def sync_data(args):
 
         logger.info(f"Found {len(measurements)} measurements")
 
-        # Get height for BMI calculation
-        height = withings.get_height()
+        # Get height for BMI calculation - reuse it if already present in the
+        # fetched measurements (avoids an extra Withings API call), otherwise
+        # fall back to a dedicated height lookup. A failure there shouldn't
+        # abort the whole sync (BMI is auxiliary), but must be logged rather
+        # than silently treated the same as "no height on file".
+        height = _extract_latest_height(measurements)
+        if height is None:
+            try:
+                height = withings.get_height()
+            except WithingsException as e:
+                logger.warning(f"Could not fetch height for BMI calculation: {e}")
         if height:
             logger.info(f"User height: {height:.2f} m")
 

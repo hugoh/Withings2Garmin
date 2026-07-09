@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 from withings2garmin.garmin_client import GarminException
 from withings2garmin.sync import (
+    _extract_latest_height,
     convert_to_fit,
     load_env_file,
     main,
@@ -35,6 +36,22 @@ def test_convert_to_fit_handles_blood_pressure():
     ]
     data = convert_to_fit(measurements)
     assert (120).to_bytes(2, "little") in data
+
+
+def test_extract_latest_height_returns_most_recent():
+    measurements = [
+        {"timestamp": datetime(2023, 1, 1), "measurements": {"height": 1.75}},
+        {"timestamp": datetime(2024, 1, 1), "measurements": {"height": 1.80}},
+        {"timestamp": datetime(2022, 1, 1), "measurements": {"weight": 80.0}},
+    ]
+    assert _extract_latest_height(measurements) == 1.80
+
+
+def test_extract_latest_height_returns_none_when_absent():
+    measurements = [
+        {"timestamp": datetime(2024, 1, 1), "measurements": {"weight": 80.0}}
+    ]
+    assert _extract_latest_height(measurements) is None
 
 
 def test_save_measurements_json_writes_file(tmp_path, caplog):
@@ -149,6 +166,40 @@ def test_sync_data_success_uploads_to_garmin():
     assert result == 0
     garmin.upload_file.assert_called_once()
     withings.set_last_sync.assert_called_once()
+
+
+def test_sync_data_reuses_height_already_in_measurements():
+    # Avoid the extra Withings API call when a height reading is already
+    # present in the fetched measurements.
+    with patch("withings2garmin.sync.WithingsClient") as MockWithings:
+        withings = MockWithings.return_value
+        withings.get_last_sync.return_value = 0
+        withings.get_measurements.return_value = [
+            {
+                "timestamp": datetime(2024, 1, 1),
+                "measurements": {"weight": 80.0, "height": 1.8},
+            }
+        ]
+
+        sync_data(_args())
+
+    withings.get_height.assert_not_called()
+
+
+def test_sync_data_get_height_failure_does_not_abort_sync():
+    # A height-lookup failure is auxiliary (BMI only) and must not fail the
+    # whole sync - but it needs to be surfaced (caplog), not silent.
+    with patch("withings2garmin.sync.WithingsClient") as MockWithings:
+        withings = MockWithings.return_value
+        withings.get_last_sync.return_value = 0
+        withings.get_measurements.return_value = [
+            {"timestamp": datetime(2024, 1, 1), "measurements": {"weight": 80.0}}
+        ]
+        withings.get_height.side_effect = WithingsException("api error")
+
+        result = sync_data(_args())
+
+    assert result == 0
 
 
 def test_sync_data_withings_exception_returns_1():

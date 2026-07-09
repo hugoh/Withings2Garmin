@@ -1,3 +1,4 @@
+from datetime import datetime
 from unittest.mock import patch
 
 import pytest
@@ -117,3 +118,96 @@ def test_garmin_constructed_with_mfa_prompt():
 
         _, kwargs = MockGarmin.call_args
         assert kwargs["prompt_mfa"] == GarminClient._prompt_mfa
+
+
+def _client():
+    with patch("withings2garmin.garmin_client.Garmin") as MockGarmin:
+        instance = MockGarmin.return_value
+        instance.login.return_value = (None, None)
+        return GarminClient(), instance
+
+
+def test_get_existing_weight_timestamps_parses_epoch_millis():
+    client, instance = _client()
+    instance.get_body_composition.return_value = {
+        "dateWeightList": [
+            {"timestampGMT": int(datetime(2024, 1, 1, 8, 0, 0).timestamp() * 1000)}
+        ]
+    }
+
+    result = client.get_existing_weight_timestamps(
+        datetime(2024, 1, 1), datetime(2024, 1, 2)
+    )
+
+    assert result == {datetime(2024, 1, 1, 8, 0, 0)}
+
+
+def test_get_existing_weight_timestamps_parses_iso_string():
+    client, instance = _client()
+    instance.get_body_composition.return_value = {
+        "dateWeightList": [{"date": "2024-01-01T08:00:00"}]
+    }
+
+    result = client.get_existing_weight_timestamps(
+        datetime(2024, 1, 1), datetime(2024, 1, 2)
+    )
+
+    assert result == {datetime(2024, 1, 1, 8, 0, 0)}
+
+
+def test_get_existing_weight_timestamps_degrades_gracefully_on_api_failure():
+    client, instance = _client()
+    instance.get_body_composition.side_effect = RuntimeError("api down")
+
+    result = client.get_existing_weight_timestamps(
+        datetime(2024, 1, 1), datetime(2024, 1, 2)
+    )
+
+    assert result == set()
+
+
+def test_get_existing_weight_timestamps_skips_unparseable_entries():
+    client, instance = _client()
+    instance.get_body_composition.return_value = {
+        "dateWeightList": [{"date": "not-a-date"}, {}]
+    }
+
+    result = client.get_existing_weight_timestamps(
+        datetime(2024, 1, 1), datetime(2024, 1, 2)
+    )
+
+    assert result == set()
+
+
+def test_get_existing_blood_pressure_timestamps_parses_measurements():
+    client, instance = _client()
+    instance.get_blood_pressure.return_value = {
+        "measurementSummaries": [
+            {
+                "measurements": [
+                    {
+                        "systolic": 120,
+                        "diastolic": 80,
+                        "measurementTimestampLocal": "2024-01-01T08:00:00",
+                    }
+                ]
+            }
+        ]
+    }
+
+    result = client.get_existing_blood_pressure_timestamps(
+        datetime(2024, 1, 1), datetime(2024, 1, 2)
+    )
+
+    assert result == {datetime(2024, 1, 1, 8, 0, 0)}
+
+
+def test_get_existing_blood_pressure_timestamps_degrades_gracefully_on_api_failure():
+    client, instance = _client()
+    instance.get_blood_pressure.side_effect = RuntimeError("api down")
+
+    result = client.get_existing_blood_pressure_timestamps(
+        datetime(2024, 1, 1), datetime(2024, 1, 2)
+    )
+
+    assert result == set()

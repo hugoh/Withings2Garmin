@@ -245,9 +245,45 @@ class WithingsClient:
                     measurements[type_mapping[measure_type]] = round(value, 2)
 
             if measurements:
-                processed.append({"timestamp": timestamp, "measurements": measurements})
+                processed.append(
+                    {
+                        "grpid": self._group_id(group),
+                        "timestamp": timestamp,
+                        "measurements": measurements,
+                    }
+                )
 
         return processed
+
+    def _group_id(self, group: Dict) -> str:
+        """Stable unique ID for a measurement group, for dedup tracking."""
+        grpid = group.get("grpid")
+        if grpid is not None:
+            return str(grpid)
+
+        # Withings' API contract documents grpid as always present; this is
+        # a defensive fallback in case a response ever omits it, so dedup
+        # tracking degrades to "less precise" rather than crashing.
+        types = ",".join(sorted(str(m["type"]) for m in group.get("measures", [])))
+        synthetic_id = f"synthetic:{group.get('date')}:{types}"
+        logger.warning(
+            f"Measurement group missing grpid, using synthetic ID: {synthetic_id}"
+        )
+        return synthetic_id
+
+    def filter_unsynced(self, measurements: List[Dict]) -> List[Dict]:
+        """Return only measurements not already marked as synced to Garmin."""
+        synced = set(self.tokens.get("synced_grpids", []))
+        return [m for m in measurements if m["grpid"] not in synced]
+
+    def mark_synced(self, measurements: List[Dict]):
+        """Record measurements as synced to Garmin, so future runs skip them."""
+        if not measurements:
+            return
+        synced = set(self.tokens.get("synced_grpids", []))
+        synced.update(m["grpid"] for m in measurements)
+        self.tokens["synced_grpids"] = sorted(synced)
+        self._save_tokens()
 
     def get_last_sync(self) -> int:
         """Get last sync timestamp."""

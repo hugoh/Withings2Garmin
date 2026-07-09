@@ -10,7 +10,9 @@ independently confirmed working by eitanbehar's fork
 import logging
 import os
 import tempfile
+from datetime import datetime
 from pathlib import Path
+from typing import Set
 
 from garminconnect import (
     Garmin,
@@ -115,3 +117,74 @@ class GarminClient:
         except Exception as e:
             logger.error(f"Garmin connection test failed: {e}")
             return False
+
+    def get_existing_weight_timestamps(
+        self, start_date: datetime, end_date: datetime
+    ) -> Set[datetime]:
+        """Timestamps of weight entries already on Garmin Connect in range.
+
+        Best-effort: this is a safety net on top of this tool's own local
+        sync tracking, not the primary dedup mechanism, so any failure here
+        is logged and treated as "found nothing" rather than aborting sync.
+        """
+        try:
+            response = self.client.get_body_composition(
+                start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d")
+            )
+        except Exception as e:
+            logger.warning(f"Could not check existing Garmin weight entries: {e}")
+            return set()
+
+        timestamps = set()
+        for entry in (response or {}).get("dateWeightList") or []:
+            raw = (
+                entry.get("timestampGMT") or entry.get("timestamp") or entry.get("date")
+            )
+            parsed = _parse_garmin_timestamp(raw)
+            if parsed is not None:
+                timestamps.add(parsed)
+        return timestamps
+
+    def get_existing_blood_pressure_timestamps(
+        self, start_date: datetime, end_date: datetime
+    ) -> Set[datetime]:
+        """Timestamps of blood pressure entries already on Garmin in range.
+
+        Best-effort, same rationale as get_existing_weight_timestamps().
+        """
+        try:
+            response = self.client.get_blood_pressure(
+                start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d")
+            )
+        except Exception as e:
+            logger.warning(
+                f"Could not check existing Garmin blood pressure entries: {e}"
+            )
+            return set()
+
+        timestamps = set()
+        for summary in (response or {}).get("measurementSummaries") or []:
+            for measurement in summary.get("measurements") or []:
+                parsed = _parse_garmin_timestamp(
+                    measurement.get("measurementTimestampLocal")
+                )
+                if parsed is not None:
+                    timestamps.add(parsed)
+        return timestamps
+
+
+def _parse_garmin_timestamp(raw) -> datetime | None:
+    """Parse a Garmin API timestamp (ISO string or epoch millis) to a naive
+    local datetime, matching how Withings timestamps are represented
+    elsewhere in this codebase (datetime.fromtimestamp(...))."""
+    if raw is None:
+        return None
+    try:
+        if isinstance(raw, str):
+            return datetime.fromisoformat(raw.replace("Z", "+00:00")).replace(
+                tzinfo=None
+            )
+        return datetime.fromtimestamp(raw / 1000)
+    except (ValueError, TypeError, OSError) as e:
+        logger.debug(f"Could not parse Garmin timestamp {raw!r}: {e}")
+        return None

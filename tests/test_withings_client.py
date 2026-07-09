@@ -82,6 +82,7 @@ def test_process_measurements_maps_known_types():
 
     raw = [
         {
+            "grpid": 12345,
             "date": int(datetime(2024, 1, 1).timestamp()),
             "measures": [
                 {"type": 1, "value": 8000, "unit": -2},  # weight 80.00
@@ -92,8 +93,61 @@ def test_process_measurements_maps_known_types():
     processed = client._process_measurements(raw)
 
     assert len(processed) == 1
+    assert processed[0]["grpid"] == "12345"
     assert processed[0]["measurements"]["weight"] == 80.0
     assert processed[0]["measurements"]["fat_ratio"] == 20.0
+
+
+def test_process_measurements_falls_back_to_synthetic_id_when_grpid_missing(caplog):
+    client = _client_with_tokens({"access_token": "a", "refresh_token": "r"})
+
+    raw = [
+        {
+            "date": int(datetime(2024, 1, 1).timestamp()),
+            "measures": [{"type": 1, "value": 8000, "unit": -2}],
+        }
+    ]
+    processed = client._process_measurements(raw)
+
+    assert processed[0]["grpid"].startswith("synthetic:")
+    assert "missing grpid" in caplog.text
+
+
+def test_filter_unsynced_excludes_already_synced_grpids():
+    client = _client_with_tokens({"access_token": "a", "refresh_token": "r"})
+    client.tokens["synced_grpids"] = ["1"]
+
+    measurements = [
+        {"grpid": "1", "timestamp": datetime(2024, 1, 1), "measurements": {}},
+        {"grpid": "2", "timestamp": datetime(2024, 1, 2), "measurements": {}},
+    ]
+
+    unsynced = client.filter_unsynced(measurements)
+
+    assert [m["grpid"] for m in unsynced] == ["2"]
+
+
+def test_mark_synced_persists_grpids():
+    client = _client_with_tokens({"access_token": "a", "refresh_token": "r"})
+
+    measurements = [
+        {"grpid": "1", "timestamp": datetime(2024, 1, 1), "measurements": {}},
+        {"grpid": "2", "timestamp": datetime(2024, 1, 2), "measurements": {}},
+    ]
+    client.mark_synced(measurements)
+
+    assert client.tokens["synced_grpids"] == ["1", "2"]
+
+    # Persisted to disk, not just in-memory.
+    with open(client.tokens_file) as f:
+        saved = json.load(f)
+    assert saved["synced_grpids"] == ["1", "2"]
+
+
+def test_mark_synced_with_no_measurements_is_a_noop():
+    client = _client_with_tokens({"access_token": "a", "refresh_token": "r"})
+    client.mark_synced([])
+    assert "synced_grpids" not in client.tokens
 
 
 def test_get_measurements_raises_on_error_status():

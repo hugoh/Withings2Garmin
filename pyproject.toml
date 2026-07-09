@@ -10,8 +10,8 @@ license = { text = "MIT" }
 requires-python = ">=3.12"
 
 dependencies = [
-    "requests>=2.31.0",
-    "garminconnect>=0.2.7",
+    "requests>=2.34.2",
+    "garminconnect>=0.3.6",
 ]
 
 [project.scripts]
@@ -26,13 +26,13 @@ packages = ["src/withings2garmin"]
 
 [dependency-groups]
 dev = [
-    "black>=25.1.0",
-    "mypy>=1.17.0",
-    "flake8-pyproject>=1.2.3",
-    "flake8-isort>=6.1.2",
-    "isort>=6.0.1",
-    "pytest>=8.4.1",
-    "types-requests>=2.32.4.20250611",
+    "black>=26.5.1",
+    "mypy>=2.2.0",
+    "flake8-pyproject>=1.2.4",
+    "flake8-isort>=7.0.0",
+    "isort>=8.0.1",
+    "pytest>=9.1.1",
+    "types-requests>=2.33.0.20260518",
 ]
 
 [tool.pylint]

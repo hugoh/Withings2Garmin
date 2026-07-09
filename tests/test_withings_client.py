@@ -150,6 +150,60 @@ def test_mark_synced_with_no_measurements_is_a_noop():
     assert "synced_grpids" not in client.tokens
 
 
+def test_save_tokens_writes_via_temp_file_and_replace():
+    client = _client_with_tokens({"access_token": "a", "refresh_token": "r"})
+
+    with patch("withings2garmin.withings_client.os.replace") as mock_replace:
+        client._save_tokens()
+
+    mock_replace.assert_called_once()
+    tmp_arg, target_arg = mock_replace.call_args[0]
+    assert tmp_arg == f"{client.tokens_file}.tmp.{os.getpid()}"
+    assert target_arg == client.tokens_file
+
+
+def test_save_tokens_crash_mid_write_leaves_target_untouched():
+    client = _client_with_tokens({"access_token": "a", "refresh_token": "r"})
+    original_content = open(client.tokens_file).read()
+
+    with patch(
+        "withings2garmin.withings_client.json.dump", side_effect=RuntimeError("boom")
+    ):
+        with pytest.raises(RuntimeError):
+            client._save_tokens()
+
+    # Target file is exactly as it was before the failed write attempt.
+    assert open(client.tokens_file).read() == original_content
+
+
+def test_save_tokens_crash_mid_write_removes_stray_temp_file():
+    client = _client_with_tokens({"access_token": "a", "refresh_token": "r"})
+    tmp_path = f"{client.tokens_file}.tmp.{os.getpid()}"
+
+    with patch(
+        "withings2garmin.withings_client.json.dump", side_effect=RuntimeError("boom")
+    ):
+        with pytest.raises(RuntimeError):
+            client._save_tokens()
+
+    assert not os.path.exists(tmp_path)
+
+
+def test_save_tokens_survives_a_stale_leftover_temp_file():
+    # A prior crash could have left a same-named temp file behind (e.g. PID
+    # reuse across reboots); a fresh save must not be blocked by it.
+    client = _client_with_tokens({"access_token": "a", "refresh_token": "r"})
+    tmp_path = f"{client.tokens_file}.tmp.{os.getpid()}"
+    with open(tmp_path, "w") as f:
+        f.write("stale leftover content")
+
+    client.tokens["last_sync"] = 12345
+    client._save_tokens()
+
+    with open(client.tokens_file) as f:
+        assert json.load(f)["last_sync"] == 12345
+
+
 def test_get_measurements_raises_on_error_status():
     client = _client_with_tokens({"access_token": "a", "refresh_token": "r"})
 

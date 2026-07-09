@@ -58,9 +58,25 @@ class WithingsClient:
             return {}
 
     def _save_tokens(self):
-        """Save tokens to file."""
-        with open(self.tokens_file, "w") as f:
-            json.dump(self.tokens, f, indent=2)
+        """Save tokens to file.
+
+        Writes to a temp file and atomically renames it onto the target
+        path, rather than writing the target directly - a crash or power
+        loss mid-write can never leave a truncated/corrupt tokens file.
+        The PID suffix means two processes never collide on the same temp
+        file name even without the lock added elsewhere.
+        """
+        tmp_path = f"{self.tokens_file}.tmp.{os.getpid()}"
+        try:
+            with open(tmp_path, "w") as f:
+                json.dump(self.tokens, f, indent=2)
+            os.replace(tmp_path, self.tokens_file)
+        except Exception:
+            # Don't leave a stray temp file behind on a write failure - the
+            # target path itself is never touched in this branch.
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+            raise
 
     def _ensure_authenticated(self):
         """Ensure we have valid authentication tokens."""

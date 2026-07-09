@@ -1,0 +1,4 @@
+# sample/.env.example only contains placeholder values (e.g.
+# "your_withings_client_secret"), not real secrets, but its entropy trips
+# gitleaks' generic-api-key rule as a false positive.
+sample/.env.example:generic-api-key:3

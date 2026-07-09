@@ -1,0 +1,21 @@
+name: hk
+
+permissions:
+  contents: read
+  packages: read
+  statuses: write
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: hugoh/gh-workflows/setup@f8f3ce3457f90b826b9eb79aa1b63ed04fb6bbfd # v1.2.4
+      - run: uv sync
+      - run: uv run pytest
+      - uses: hugoh/gh-workflows/hk-check@f8f3ce3457f90b826b9eb79aa1b63ed04fb6bbfd # v1.2.4

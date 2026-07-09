@@ -5,6 +5,8 @@ import sys
 from datetime import datetime
 from unittest.mock import patch
 
+from garmin_fit_sdk import Decoder, Stream
+
 from withings2garmin.garmin_client import GarminException
 from withings2garmin.sync import (
     _extract_latest_height,
@@ -17,14 +19,22 @@ from withings2garmin.sync import (
 from withings2garmin.withings_client import WithingsException
 
 
+def _decode(data: bytes):
+    stream = Stream.from_byte_array(bytearray(data))
+    messages, errors = Decoder(stream).read()
+    assert errors == []
+    return messages
+
+
 def test_convert_to_fit_includes_bmi_from_height():
     measurements = [
         {"timestamp": datetime(2024, 1, 1), "measurements": {"weight": 80.0}}
     ]
     data = convert_to_fit(measurements, height=2.0)
 
-    # bmi = 80 / 2^2 = 20.0 -> scale 10 -> 200 -> b'\xc8\x00'
-    assert (200).to_bytes(2, "little") in data
+    weight_scale = _decode(data)["weight_scale_mesgs"][0]
+    assert weight_scale["weight"] == 80.0
+    assert weight_scale["bmi"] == 20.0  # 80 / 2^2
 
 
 def test_convert_to_fit_handles_blood_pressure():
@@ -35,7 +45,10 @@ def test_convert_to_fit_handles_blood_pressure():
         }
     ]
     data = convert_to_fit(measurements)
-    assert (120).to_bytes(2, "little") in data
+
+    bp = _decode(data)["blood_pressure_mesgs"][0]
+    assert bp["systolic_pressure"] == 120
+    assert bp["diastolic_pressure"] == 80
 
 
 def test_extract_latest_height_returns_most_recent():

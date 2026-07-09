@@ -107,7 +107,9 @@ def save_measurements_json(measurements: List[Dict], filename: str):
     with open(filename, "w") as f:
         json.dump(serializable_data, f, indent=2)
 
-    print(f"Saved {len(measurements)} measurements to {filename}")
+    logging.getLogger(__name__).info(
+        f"Saved {len(measurements)} measurements to {filename}"
+    )
 
 
 def sync_data(args):
@@ -195,11 +197,7 @@ def sync_data(args):
         logger.error(f"Garmin error: {e}")
         return 1
     except Exception as e:
-        logger.error(f"Unexpected error: {e}")
-        if args.verbose:
-            import traceback
-
-            traceback.print_exc()
+        logger.error(f"Unexpected error: {e}", exc_info=args.verbose)
         return 1
 
     return 0

@@ -82,13 +82,16 @@ class WithingsClient:
 
         url = AUTHORIZE_URL + "?" + "&".join([f"{k}={v}" for k, v in params.items()])
 
-        print("\n" + "=" * 60)
-        print("WITHINGS AUTHORIZATION REQUIRED")
-        print("=" * 60)
-        print("Open this URL in your browser and copy the authorization code:")
-        print(f"\n{url}\n")
-        print("You have 30 seconds to complete this process!")
-        print("=" * 60)
+        logger.info(
+            "\n"
+            + "=" * 60
+            + "\nWITHINGS AUTHORIZATION REQUIRED\n"
+            + "=" * 60
+            + "\nOpen this URL in your browser and copy the authorization code:"
+            + f"\n\n{url}\n"
+            + "\nYou have 30 seconds to complete this process!\n"
+            + "=" * 60
+        )
 
         auth_code = input("Enter authorization code: ").strip()
         if not auth_code:

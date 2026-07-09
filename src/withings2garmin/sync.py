@@ -206,12 +206,10 @@ def sync_data(args):
 
         # Upload to Garmin if requested
         if args.garmin:
-            if fit_data is None:
-                logger.info(
-                    "Converting measurements to FIT format for Garmin upload..."
-                )
-                fit_data = convert_to_fit(measurements, height)
-
+            # fit_data is always set by this point: the block above already
+            # ran (its condition is `args.output_fit or args.garmin`, and
+            # args.garmin is true here).
+            assert fit_data is not None
             logger.info("Uploading to Garmin Connect...")
             if garmin and garmin.upload_file(fit_data):
                 logger.info("Successfully uploaded to Garmin Connect")

@@ -8,6 +8,13 @@ from datetime import datetime
 from typing import Dict, List, Optional
 
 import requests
+from tenacity import (
+    before_sleep_log,
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 from . import paths
 
@@ -16,6 +23,19 @@ logger = logging.getLogger(__name__)
 AUTHORIZE_URL = "https://account.withings.com/oauth2_user/authorize2"
 TOKEN_URL = "https://wbsapi.withings.net/v2/oauth2"
 GETMEAS_URL = "https://wbsapi.withings.net/measure?action=getmeas"
+
+# Retry only network-level failures (connection refused, DNS, timeout) -
+# not Withings' own status != 0 responses, which are typically auth/logic
+# errors (wrong credentials, expired token) that a retry won't fix.
+_retry_on_transient_network_errors = retry(
+    retry=retry_if_exception_type(
+        (requests.exceptions.ConnectionError, requests.exceptions.Timeout)
+    ),
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=1, max=10),
+    before_sleep=before_sleep_log(logger, logging.WARNING),
+    reraise=True,
+)
 
 
 class WithingsException(Exception):
@@ -118,6 +138,7 @@ class WithingsClient:
 
         return auth_code
 
+    @_retry_on_transient_network_errors
     def _get_access_token(self):
         """Exchange authorization code for access token."""
         params = {
@@ -146,6 +167,7 @@ class WithingsClient:
 
         logger.info("Successfully obtained access token")
 
+    @_retry_on_transient_network_errors
     def _refresh_access_token(self):
         """Refresh the access token."""
         if not self.tokens.get("refresh_token"):
@@ -175,6 +197,7 @@ class WithingsClient:
         else:
             logger.warning(f"Token refresh failed: {data}")
 
+    @_retry_on_transient_network_errors
     def get_measurements(self, start_date: datetime, end_date: datetime) -> List[Dict]:
         """Get measurements from Withings API."""
         params = {
@@ -195,6 +218,7 @@ class WithingsClient:
 
         return self._process_measurements(measurements)
 
+    @_retry_on_transient_network_errors
     def get_height(self) -> Optional[float]:
         """Get user's height."""
         params = {

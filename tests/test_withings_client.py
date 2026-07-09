@@ -4,6 +4,7 @@ from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
+import requests
 
 from withings2garmin.withings_client import WithingsClient, WithingsException
 
@@ -256,3 +257,53 @@ def test_get_last_sync_and_set_last_sync():
 
     client.set_last_sync()
     assert client.get_last_sync() == client.tokens["last_sync"]
+
+
+def test_get_measurements_retries_on_connection_error_then_succeeds():
+    client = _client_with_tokens({"access_token": "a", "refresh_token": "r"})
+
+    success = MagicMock(json=lambda: {"status": 0, "body": {"measuregrps": []}})
+    with (
+        patch(
+            "withings2garmin.withings_client.requests.post",
+            side_effect=[requests.exceptions.ConnectionError("boom"), success],
+        ) as mock_post,
+        patch("time.sleep"),
+    ):
+        result = client.get_measurements(datetime(2024, 1, 1), datetime(2024, 1, 2))
+
+    assert result == []
+    assert mock_post.call_count == 2
+
+
+def test_get_measurements_gives_up_after_max_attempts():
+    client = _client_with_tokens({"access_token": "a", "refresh_token": "r"})
+
+    with (
+        patch(
+            "withings2garmin.withings_client.requests.post",
+            side_effect=requests.exceptions.ConnectionError("boom"),
+        ) as mock_post,
+        patch("time.sleep"),
+    ):
+        with pytest.raises(requests.exceptions.ConnectionError):
+            client.get_measurements(datetime(2024, 1, 1), datetime(2024, 1, 2))
+
+    assert mock_post.call_count == 3
+
+
+def test_get_measurements_does_not_retry_on_withings_status_error():
+    # A non-zero Withings status is an auth/logic error, not transient -
+    # retrying it wastes time and won't change the outcome.
+    client = _client_with_tokens({"access_token": "a", "refresh_token": "r"})
+
+    with (
+        patch("withings2garmin.withings_client.requests.post") as mock_post,
+        patch("time.sleep") as mock_sleep,
+    ):
+        mock_post.return_value = MagicMock(json=lambda: {"status": 1})
+        with pytest.raises(WithingsException):
+            client.get_measurements(datetime(2024, 1, 1), datetime(2024, 1, 2))
+
+    assert mock_post.call_count == 1
+    mock_sleep.assert_not_called()

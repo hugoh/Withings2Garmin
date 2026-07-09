@@ -15,6 +15,7 @@ dependencies = [
     "platformdirs>=4.0",
     "python-dotenv>=1.2.2",
     "garmin-fit-sdk>=21.208.0",
+    "tenacity>=9.1.4",
 ]
 
 [project.scripts]

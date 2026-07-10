@@ -5,6 +5,7 @@ import getpass
 import json
 import logging
 import os
+import sys
 from datetime import datetime
 from typing import Dict, List, Optional
 
@@ -15,6 +16,17 @@ from . import paths
 from .fit_encoder import FitEncoder
 from .garmin_client import GarminClient, GarminException
 from .withings_client import WithingsClient, WithingsException
+
+
+class _MaxLevelFilter(logging.Filter):
+    """Filter that only allows records below a given level through."""
+
+    def __init__(self, max_level: int):
+        super().__init__()
+        self.max_level = max_level
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        return record.levelno < self.max_level
 
 
 def setup_logging(verbose: bool = False):
@@ -28,12 +40,22 @@ def setup_logging(verbose: bool = False):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     log_filename = os.path.join(logs_dir, f"withings_sync_{timestamp}.log")
 
+    # Routine output (DEBUG/INFO) goes to stdout; WARNING and above go to
+    # stderr. This keeps stderr clean on successful runs, which matters for
+    # cron wrappers like cronic that treat any stderr output as a failure.
+    stdout_handler = logging.StreamHandler(sys.stdout)
+    stdout_handler.addFilter(_MaxLevelFilter(logging.WARNING))
+
+    stderr_handler = logging.StreamHandler(sys.stderr)
+    stderr_handler.setLevel(logging.WARNING)
+
     # Simple logging configuration
     logging.basicConfig(
         level=level,
         format="%(asctime)s - %(levelname)s - %(message)s",
         handlers=[
-            logging.StreamHandler(),  # Console output
+            stdout_handler,
+            stderr_handler,
             logging.FileHandler(log_filename, encoding="utf-8"),  # File output
         ],
         force=True,  # Override any existing configuration

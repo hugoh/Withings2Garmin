@@ -33,6 +33,7 @@ wheels/
 # Output files
 *.json
 !.renovaterc.json
+!dprint.json
 *.fit
 
 # Logs

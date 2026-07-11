@@ -110,12 +110,12 @@ limits or want your own quota, register your own:
 on a "repo root" for storing your credentials, tokens, or logs. It resolves each
 in order:
 
-| What | 1. explicit override | 2. cwd (local dev) | 3. default |
-|---|---|---|---|
-| Config file (`.env`) | `$WITHINGS2GARMIN_CONFIG_FILE` | `./.env` | `<user config dir>/config.env` |
-| Withings tokens | `$WITHINGS_TOKENS_FILE` | `./.withings_tokens.json` | `<user data dir>/withings_tokens.json` |
-| Garmin session | `$GARMIN_SESSION_DIR` | `./.garmin_session` | `<user data dir>/garmin_session` |
-| Logs | `$WITHINGS2GARMIN_LOG_DIR` | *(always)* | `<user log dir>` |
+| What                 | 1. explicit override           | 2. cwd (local dev)        | 3. default                             |
+| -------------------- | ------------------------------ | ------------------------- | -------------------------------------- |
+| Config file (`.env`) | `$WITHINGS2GARMIN_CONFIG_FILE` | `./.env`                  | `<user config dir>/config.env`         |
+| Withings tokens      | `$WITHINGS_TOKENS_FILE`        | `./.withings_tokens.json` | `<user data dir>/withings_tokens.json` |
+| Garmin session       | `$GARMIN_SESSION_DIR`          | `./.garmin_session`       | `<user data dir>/garmin_session`       |
+| Logs                 | `$WITHINGS2GARMIN_LOG_DIR`     | _(always)_                | `<user log dir>`                       |
 
 `<user config/data/log dir>` follow OS conventions via
 [`platformdirs`](https://github.com/tox-dev/platformdirs) — e.g. on Linux,

@@ -1,14 +1,14 @@
 amends "package://github.com/jdx/hk/releases/download/v1.50.0/hk@1.50.0#/Config.pkl"
 import "package://github.com/jdx/hk/releases/download/v1.50.0/hk@1.50.0#/Builtins.pkl"
-import "package://github.com/hugoh/hk-config/releases/download/v0.2.0/hk-config@0.2.0#/base.pkl" as Base
+import "package://github.com/hugoh/hk-config/releases/download/v0.3.0/hk-config@0.3.0#/base.pkl" as Base
 
 min_hk_version = Base.min_hk_version
 
 local linters = new Mapping<String, Step> {
     ...Base.base
-    ["toml"] = Builtins.tombi
 
     // Python - run via this project's own uv-managed tools, not PATH binaries
+    ...Base.python
     ["ruff"] = (Builtins.ruff) {
         check = "uv run ruff check --force-exclude {{ files }}"
         fix = "uv run ruff check --force-exclude --fix {{ files }}"

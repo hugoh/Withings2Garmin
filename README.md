@@ -129,6 +129,9 @@ If you keep running `withings2garmin` from the same directory (e.g. a repo
 checkout via `uv run`), files there are always found first — nothing changes
 for that workflow.
 
+Run `withings2garmin --show-paths` to print all of the resolved paths above
+for your current environment.
+
 ## Usage
 
 Run `withings2garmin --help` for the full flag reference. A couple of common
@@ -219,17 +222,21 @@ default is INFO.
 ## Troubleshooting
 
 Tokens/session files may be in your working directory or in the default user
-data directory — see [Where files are stored](#where-files-are-stored) if
-unsure. `--verbose` logs the resolved paths on every run.
+data directory — run `withings2garmin --show-paths` if unsure (see
+[Where files are stored](#where-files-are-stored)). `--verbose` also logs the
+resolved paths on every run.
 
 **Withings token expiration / Garmin session issues:**
 
+Run `uv run withings2garmin --show-paths` to find the `Withings tokens` and
+`Garmin session dir` paths, then:
+
 ```bash
 # Remove invalid Withings tokens and re-authenticate
-rm "$(uv run python -c 'from withings2garmin import paths; print(paths.withings_tokens_file())')"
+rm <withings-tokens-path>
 
 # Or clear the Garmin session and re-authenticate
-rm -rf "$(uv run python -c 'from withings2garmin import paths; print(paths.garmin_session_dir())')"
+rm -rf <garmin-session-dir>
 
 uv run withings2garmin --garmin
 ```

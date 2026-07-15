@@ -7,7 +7,6 @@ import logging
 import os
 import sys
 from datetime import datetime
-from typing import Dict, List, Optional
 
 from dotenv import dotenv_values, load_dotenv, set_key
 from filelock import FileLock, Timeout
@@ -82,14 +81,14 @@ def load_env_file(env_file: str = ".env"):
         logging.debug(f"Environment file '{env_file}' not found.")
 
 
-def _prompt_with_default(prompt: str, current: Optional[str]) -> str:
+def _prompt_with_default(prompt: str, current: str | None) -> str:
     """Prompt for a value, showing the current one (if any) as the default."""
     suffix = f" [{current}]" if current else ""
     value = input(f"{prompt}{suffix}: ").strip()
     return value or current or ""
 
 
-def _prompt_secret_with_default(prompt: str, current: Optional[str]) -> str:
+def _prompt_secret_with_default(prompt: str, current: str | None) -> str:
     """Prompt for a secret value (not echoed), keeping the current on blank input."""
     suffix = " (leave blank to keep current)" if current else ""
     value = getpass.getpass(f"{prompt}{suffix}: ").strip()
@@ -180,7 +179,7 @@ def show_paths() -> int:
     return 0
 
 
-def convert_to_fit(measurements: List[Dict], height: Optional[float] = None) -> bytes:
+def convert_to_fit(measurements: list[dict], height: float | None = None) -> bytes:
     """Convert measurements to FIT file format."""
     encoder = FitEncoder()
     encoder.write_file_id()
@@ -226,7 +225,7 @@ def convert_to_fit(measurements: List[Dict], height: Optional[float] = None) -> 
     return encoder.finalize()
 
 
-def _extract_latest_height(measurements: List[Dict]) -> Optional[float]:
+def _extract_latest_height(measurements: list[dict]) -> float | None:
     """Find the most recent height reading already present in fetched measurements."""
     latest_height = None
     latest_timestamp = None
@@ -243,13 +242,13 @@ def _extract_latest_height(measurements: List[Dict]) -> Optional[float]:
 
 
 def _classify_for_garmin_upload(
-    measurements: List[Dict],
+    measurements: list[dict],
     withings: WithingsClient,
     garmin: GarminClient,
     start_date: datetime,
     end_date: datetime,
     force: bool,
-) -> tuple[List[Dict], List[Dict]]:
+) -> tuple[list[dict], list[dict]]:
     """Split measurements into (already_on_garmin, to_upload) for a sync.
 
     already_on_garmin: determined to already exist on Garmin (locally
@@ -285,7 +284,7 @@ def _classify_for_garmin_upload(
     return already_on_garmin, to_upload
 
 
-def save_measurements_json(measurements: List[Dict], filename: str):
+def save_measurements_json(measurements: list[dict], filename: str):
     """Save measurements to JSON file."""
     # Convert datetime objects to strings for JSON serialization
     serializable_data = []

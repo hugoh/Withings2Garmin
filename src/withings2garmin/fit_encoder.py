@@ -10,7 +10,6 @@ hand-maintained constants.
 """
 
 from datetime import datetime
-from typing import Optional
 
 from garmin_fit_sdk import Encoder
 
@@ -58,11 +57,11 @@ class FitEncoder:
         self,
         timestamp: datetime,
         weight: float,
-        fat_percentage: Optional[float] = None,
-        muscle_mass: Optional[float] = None,
-        bone_mass: Optional[float] = None,
-        body_water: Optional[float] = None,
-        bmi: Optional[float] = None,
+        fat_percentage: float | None = None,
+        muscle_mass: float | None = None,
+        bone_mass: float | None = None,
+        body_water: float | None = None,
+        bmi: float | None = None,
     ):
         """Write weight scale measurement."""
         self._encoder.write_mesg(
@@ -83,7 +82,7 @@ class FitEncoder:
         timestamp: datetime,
         systolic: int,
         diastolic: int,
-        heart_rate: Optional[int] = None,
+        heart_rate: int | None = None,
     ):
         """Write blood pressure measurement."""
         self._encoder.write_mesg(

@@ -57,10 +57,10 @@ jobs:
           fetch-depth: 0
           ref: ${{ needs.release.outputs.new_tag }}
 
-      - uses: hugoh/gh-workflows/setup@f8f3ce3457f90b826b9eb79aa1b63ed04fb6bbfd # v1.2.4
+      - uses: hugoh/gh-workflows/setup@fe2707057b8da8fab2460fc1f0e816561fa8a958 # v1.3.0
 
       - name: Build package
         run: uv build
 
       - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@76f52bc884231f62b9a034ebfe128415bbaabdfc # v1.12.4
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0

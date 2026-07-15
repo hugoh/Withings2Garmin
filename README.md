@@ -1,6 +1,7 @@
 # Withings2Garmin
 
-> **This is a fork.** This repository builds on
+> **This is a fork.**
+> [This repository](https://github.com/hugoh/Withings2Garmin) builds on
 > [sodelalbert/Withings2Garmin](https://github.com/sodelalbert/Withings2Garmin),
 > and borrows specific fixes from other forks/PRs in that project's family
 > tree rather than reinventing them:
@@ -56,7 +57,7 @@ uvx --from withings2garmin-hugoh withings2garmin --garmin
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh  # install uv
 
-git clone https://github.com/sodelalbert/Withings2Garmin.git
+git clone https://github.com/hugoh/Withings2Garmin.git
 cd Withings2Garmin
 uv sync
 ```

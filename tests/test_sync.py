@@ -8,6 +8,7 @@ from unittest.mock import patch
 import pytest
 from garmin_fit_sdk import Decoder, Stream
 
+from withings2garmin import __version__
 from withings2garmin.garmin_client import GarminException
 from withings2garmin.sync import (
     _extract_latest_height,
@@ -235,6 +236,16 @@ def test_edit_config_sets_restrictive_file_permissions(tmp_path, monkeypatch):
         edit_config()
 
     assert (env_path.stat().st_mode & 0o777) == 0o600
+
+
+def test_main_version_flag_prints_version_and_exits(monkeypatch, capsys):
+    monkeypatch.setattr(sys, "argv", ["withings2garmin", "--version"])
+
+    with pytest.raises(SystemExit) as exc_info:
+        main()
+
+    assert exc_info.value.code == 0
+    assert __version__ in capsys.readouterr().out
 
 
 def test_main_edit_config_flag_skips_sync(monkeypatch):

@@ -162,6 +162,24 @@ def edit_config() -> int:
     return 0
 
 
+def show_paths() -> int:
+    """Print the resolved config/state/log paths, for users who want to
+    know where withings2garmin reads from and writes to."""
+    rows = [
+        ("Config file", paths.resolve_env_file()),
+        ("Config dir", paths.config_dir()),
+        ("Data dir", paths.data_dir()),
+        ("Log dir", paths.log_dir()),
+        ("Withings tokens", paths.withings_tokens_file()),
+        ("Garmin session dir", paths.garmin_session_dir()),
+        ("Sync lock file", paths.sync_lock_file()),
+    ]
+    label_width = max(len(label) for label, _ in rows)
+    for label, path in rows:
+        print(f"{label + ':':<{label_width + 1}}  {path}")
+    return 0
+
+
 def convert_to_fit(measurements: List[Dict], height: Optional[float] = None) -> bytes:
     """Convert measurements to FIT file format."""
     encoder = FitEncoder()
@@ -467,11 +485,19 @@ def main():
             "to the resolved config file, then exit"
         ),
     )
+    parser.add_argument(
+        "--show-paths",
+        action="store_true",
+        help="Print resolved config/state/log file and directory paths, then exit",
+    )
 
     args = parser.parse_args()
 
     if args.edit_config:
         return edit_config()
+
+    if args.show_paths:
+        return show_paths()
 
     # Must run before setup_logging(): .env can set WITHINGS2GARMIN_LOG_DIR,
     # which setup_logging() -> paths.log_dir() reads from os.environ.

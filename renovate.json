@@ -1,22 +1,5 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["github>hugoh/renovate-config", ":preserveSemverRanges"],
-  "forkProcessing": "enabled",
-  "customManagers": [
-    {
-      "customType": "regex",
-      "description": "Keep the PicoCSS CDN version pinned in the OAuth page in sync",
-      "managerFilePatterns": ["/^docs/index\\.html$/"],
-      "matchStrings": [
-        "@picocss/pico@(?<currentValue>[0-9.]+)/css/pico\\.min\\.css"
-      ],
-      "depNameTemplate": "@picocss/pico",
-      "datasourceTemplate": "npm"
-    }
-  ],
-  "postUpgradeTasks": {
-    "commands": ["python3 scripts/update_pico_sri.py"],
-    "fileFilters": ["docs/index.html"],
-    "executionMode": "branch"
-  }
+  "forkProcessing": "enabled"
 }

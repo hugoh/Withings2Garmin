@@ -4,6 +4,7 @@ dynamic = ["version"]
 description = "Simplified Withings to Garmin sync tool"
 authors = [
   { name = "Albert Sodel", email = "sodelalbert@gmail.com" },
+  { name = "Hugo Haas", email = "hugoh@hugoh.net" },
 ]
 readme = "README.md"
 license = "MIT"

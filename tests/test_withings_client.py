@@ -200,27 +200,35 @@ def test_save_tokens_writes_via_temp_file_and_replace():
 
 def test_save_tokens_crash_mid_write_leaves_target_untouched():
     client = _client_with_tokens({"access_token": "a", "refresh_token": "r"})
-    original_content = open(client.tokens_file).read()
+    with open(client.tokens_file) as f:
+        original_content = f.read()
 
-    with patch(
-        "withings2garmin.withings_client.json.dump", side_effect=RuntimeError("boom")
+    with (
+        patch(
+            "withings2garmin.withings_client.json.dump",
+            side_effect=RuntimeError("boom"),
+        ),
+        pytest.raises(RuntimeError),
     ):
-        with pytest.raises(RuntimeError):
-            client._save_tokens()
+        client._save_tokens()
 
     # Target file is exactly as it was before the failed write attempt.
-    assert open(client.tokens_file).read() == original_content
+    with open(client.tokens_file) as f:
+        assert f.read() == original_content
 
 
 def test_save_tokens_crash_mid_write_removes_stray_temp_file():
     client = _client_with_tokens({"access_token": "a", "refresh_token": "r"})
     tmp_path = f"{client.tokens_file}.tmp.{os.getpid()}"
 
-    with patch(
-        "withings2garmin.withings_client.json.dump", side_effect=RuntimeError("boom")
+    with (
+        patch(
+            "withings2garmin.withings_client.json.dump",
+            side_effect=RuntimeError("boom"),
+        ),
+        pytest.raises(RuntimeError),
     ):
-        with pytest.raises(RuntimeError):
-            client._save_tokens()
+        client._save_tokens()
 
     assert not os.path.exists(tmp_path)
 
@@ -320,9 +328,9 @@ def test_get_measurements_gives_up_after_max_attempts():
             side_effect=requests.exceptions.ConnectionError("boom"),
         ) as mock_post,
         patch("time.sleep"),
+        pytest.raises(requests.exceptions.ConnectionError),
     ):
-        with pytest.raises(requests.exceptions.ConnectionError):
-            client.get_measurements(datetime(2024, 1, 1), datetime(2024, 1, 2))
+        client.get_measurements(datetime(2024, 1, 1), datetime(2024, 1, 2))
 
     assert mock_post.call_count == 3
 

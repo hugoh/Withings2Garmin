@@ -5,7 +5,6 @@ import logging
 import os
 import time
 from datetime import datetime
-from typing import Dict, List, Optional
 
 import requests
 from tenacity import (
@@ -37,9 +36,7 @@ DEFAULT_CLIENT_ID = "ac5f36d9fb0b8a4f05f340fc86e77b7cd21ecd551ca0cc3ed465303637e
 DEFAULT_CLIENT_SECRET = (
     "56a69ccff7ab4c3c17e63bea82e1f2b181ea1154390609019f37fe917a428d65"
 )
-DEFAULT_CALLBACK_URL = (
-    "https://jaroslawhartman.github.io/withings-sync/contrib/withings.html"
-)
+DEFAULT_CALLBACK_URL = "https://hugoh.github.io/Withings2Garmin/"
 
 # Retry only network-level failures (connection refused, DNS, timeout) -
 # not Withings' own status != 0 responses, which are typically auth/logic
@@ -88,10 +85,10 @@ class WithingsClient:
         # Ensure we have valid tokens
         self._ensure_authenticated()
 
-    def _load_tokens(self) -> Dict:
+    def _load_tokens(self) -> dict:
         """Load tokens from file."""
         try:
-            with open(self.tokens_file, "r") as f:
+            with open(self.tokens_file) as f:
                 return json.load(f)
         except (FileNotFoundError, json.JSONDecodeError):
             return {}
@@ -217,7 +214,7 @@ class WithingsClient:
             logger.warning(f"Token refresh failed: {data}")
 
     @_retry_on_transient_network_errors
-    def get_measurements(self, start_date: datetime, end_date: datetime) -> List[Dict]:
+    def get_measurements(self, start_date: datetime, end_date: datetime) -> list[dict]:
         """Get measurements from Withings API."""
         params = {
             "access_token": self.tokens["access_token"],
@@ -238,7 +235,7 @@ class WithingsClient:
         return self._process_measurements(measurements)
 
     @_retry_on_transient_network_errors
-    def get_height(self) -> Optional[float]:
+    def get_height(self) -> float | None:
         """Get user's height."""
         params = {
             "access_token": self.tokens["access_token"],
@@ -272,7 +269,7 @@ class WithingsClient:
 
         return latest_height
 
-    def _process_measurements(self, raw_measurements: List[Dict]) -> List[Dict]:
+    def _process_measurements(self, raw_measurements: list[dict]) -> list[dict]:
         """Process raw measurements into structured format."""
         processed = []
 
@@ -314,7 +311,7 @@ class WithingsClient:
 
         return processed
 
-    def _group_id(self, group: Dict) -> str:
+    def _group_id(self, group: dict) -> str:
         """Stable unique ID for a measurement group, for dedup tracking."""
         grpid = group.get("grpid")
         if grpid is not None:
@@ -330,12 +327,12 @@ class WithingsClient:
         )
         return synthetic_id
 
-    def filter_unsynced(self, measurements: List[Dict]) -> List[Dict]:
+    def filter_unsynced(self, measurements: list[dict]) -> list[dict]:
         """Return only measurements not already marked as synced to Garmin."""
         synced = set(self.tokens.get("synced_grpids", []))
         return [m for m in measurements if m["grpid"] not in synced]
 
-    def mark_synced(self, measurements: List[Dict]):
+    def mark_synced(self, measurements: list[dict]):
         """Record measurements as synced to Garmin, so future runs skip them."""
         if not measurements:
             return

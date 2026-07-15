@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from garmin_fit_sdk import Decoder, Stream
 
@@ -49,7 +49,7 @@ def test_write_weight_measurement_round_trips_scaled_fields():
     assert weight_scale["bone_mass"] == 3.2
     assert weight_scale["percent_hydration"] == 55.0
     assert weight_scale["bmi"] == 24.5
-    assert weight_scale["timestamp"] == timestamp.astimezone(timezone.utc)
+    assert weight_scale["timestamp"] == timestamp.astimezone(UTC)
 
 
 def test_write_weight_measurement_zero_values_round_trip_as_zero():

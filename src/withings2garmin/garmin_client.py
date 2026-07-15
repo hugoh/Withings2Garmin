@@ -12,7 +12,6 @@ import os
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from typing import Set
 
 from garminconnect import (
     Garmin,
@@ -81,7 +80,7 @@ class GarminClient:
             # wrapping it in one of the exception types above.
             FileNotFoundError,
         ) as e:
-            raise GarminException(f"Garmin authentication failed: {e}")
+            raise GarminException(f"Garmin authentication failed: {e}") from e
 
     def upload_file(
         self, file_data: bytes, filename: str = "withings_sync.fit"
@@ -120,7 +119,7 @@ class GarminClient:
 
     def get_existing_weight_timestamps(
         self, start_date: datetime, end_date: datetime
-    ) -> Set[datetime]:
+    ) -> set[datetime]:
         """Timestamps of weight entries already on Garmin Connect in range.
 
         Best-effort: this is a safety net on top of this tool's own local
@@ -147,7 +146,7 @@ class GarminClient:
 
     def get_existing_blood_pressure_timestamps(
         self, start_date: datetime, end_date: datetime
-    ) -> Set[datetime]:
+    ) -> set[datetime]:
         """Timestamps of blood pressure entries already on Garmin in range.
 
         Best-effort, same rationale as get_existing_weight_timestamps().

@@ -12,7 +12,7 @@ from typing import Dict, List, Optional
 from dotenv import dotenv_values, load_dotenv, set_key
 from filelock import FileLock, Timeout
 
-from . import paths
+from . import __version__, paths
 from .fit_encoder import FitEncoder
 from .garmin_client import GarminClient, GarminException
 from .withings_client import WithingsClient, WithingsException
@@ -446,6 +446,11 @@ def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(description="Withings to Garmin sync tool")
 
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
+    )
     parser.add_argument(
         "-f",
         dest="from_date",

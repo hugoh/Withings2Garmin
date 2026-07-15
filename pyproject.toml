@@ -3,8 +3,8 @@ name = "withings2garmin-hugoh"
 dynamic = ["version"]
 description = "Simplified Withings to Garmin sync tool"
 authors = [
-  { name = "Albert Sodel", email = "sodelalbert@gmail.com" },
-  { name = "Hugo Haas", email = "hugoh@hugoh.net" },
+  { name = "Albert Sodel" },
+  { name = "Hugo Haas" },
 ]
 readme = "README.md"
 license = "MIT"

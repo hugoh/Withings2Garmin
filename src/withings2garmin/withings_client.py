@@ -37,9 +37,7 @@ DEFAULT_CLIENT_ID = "ac5f36d9fb0b8a4f05f340fc86e77b7cd21ecd551ca0cc3ed465303637e
 DEFAULT_CLIENT_SECRET = (
     "56a69ccff7ab4c3c17e63bea82e1f2b181ea1154390609019f37fe917a428d65"
 )
-DEFAULT_CALLBACK_URL = (
-    "https://jaroslawhartman.github.io/withings-sync/contrib/withings.html"
-)
+DEFAULT_CALLBACK_URL = "https://hugoh.github.io/Withings2Garmin/"
 
 # Retry only network-level failures (connection refused, DNS, timeout) -
 # not Withings' own status != 0 responses, which are typically auth/logic

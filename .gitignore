@@ -34,6 +34,7 @@ wheels/
 *.json
 !.renovaterc.json
 !dprint.json
+!biome.json
 *.fit
 
 # Logs

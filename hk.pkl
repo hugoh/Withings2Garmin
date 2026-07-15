@@ -6,6 +6,7 @@ min_hk_version = Base.min_hk_version
 
 local linters = new Mapping<String, Step> {
     ...Base.base
+    ...Base.web
 
     // Python - run via this project's own uv-managed tools, not PATH binaries
     ...Base.python

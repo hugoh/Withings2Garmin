@@ -3,9 +3,7 @@
   "markdown": {},
   "toml": {},
   "yaml": {},
-  "excludes": [
-    "mise.toml"
-  ],
+  "excludes": ["mise.toml"],
   "plugins": [
     "https://plugins.dprint.dev/json-0.22.0.wasm",
     "https://plugins.dprint.dev/markdown-0.22.1.wasm",

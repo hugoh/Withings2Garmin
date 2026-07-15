@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Withings Authorization Code</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@picocss/pico@2.1.1/css/pico.min.css"
+      integrity="sha256-+8mmP8n8n3LRL9f8mAbhH6n3euT5ytFGsnADoRGbo9s="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+  </head>
+  <body>
+    <main class="container" style="text-align: center; max-width: 40rem">
+      <h1>Withings Authorization Code</h1>
+      <input id="code" type="text" readonly aria-label="Authorization code" />
+      <button onclick="copyCode()">Copy</button>
+      <p>Paste this into the sync script within the next 30 seconds — it expires quickly.</p>
+      <p>
+        <small>
+          This code is read directly out of the page URL by your browser and copied with the
+          clipboard API. Nothing on this page is sent anywhere, and no cookies, analytics, or
+          tracking are used.
+        </small>
+      </p>
+      <footer>
+        <small>
+          Based on the
+          <a
+            href="https://github.com/jaroslawhartman/withings-sync/blob/master/contrib/withings.html"
+            >original callback page</a
+          >
+          from
+          <a href="https://github.com/jaroslawhartman/withings-sync">jaroslawhartman/withings-sync</a>.
+        </small>
+      </footer>
+    </main>
+    <script>
+      const params = new URLSearchParams(window.location.search);
+      document.getElementById("code").value = params.get("code") ?? "";
+
+      function copyCode() {
+        navigator.clipboard.writeText(document.getElementById("code").value);
+      }
+    </script>
+  </body>
+</html>

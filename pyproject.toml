@@ -1,5 +1,5 @@
 [project]
-name = "withings2garmin"
+name = "withings2garmin-hugoh"
 dynamic = ["version"]
 description = "Simplified Withings to Garmin sync tool"
 authors = [

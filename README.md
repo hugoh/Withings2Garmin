@@ -37,13 +37,18 @@ to Garmin Connect as FIT files.
 
 This project requires Python 3.12+.
 
+Released to PyPI as
+[`withings2garmin-hugoh`](https://pypi.org/project/withings2garmin-hugoh/)
+(distinct from the upstream project's own package name, since this is a
+fork) on every merge to `master` — see [Releases](#releases).
+
 ### Run without installing (uvx)
 
 With [uv](https://docs.astral.sh/uv/) installed, run the tool directly from PyPI
 without a local checkout:
 
 ```bash
-uvx withings2garmin --garmin
+uvx --from withings2garmin-hugoh withings2garmin --garmin
 ```
 
 ### Install for local development
@@ -288,10 +293,14 @@ to update them.
 
 Commit messages must follow [Conventional Commits](https://www.conventionalcommits.org/)
 (enforced by an `hk` `commit-msg` hook — `feat: ...`, `fix: ...`, etc.).
-Pushing to `master` automatically bumps the version and publishes a GitHub
-Release when a commit warrants it: `feat:` → minor, `fix:` → patch,
-`BREAKING CHANGE:`/`!` → major. The package version itself is derived from
-the latest git tag (via `hatch-vcs`) — nothing to bump by hand.
+Pushing to `master` automatically bumps the version, publishes a GitHub
+Release, and pushes the built package to
+[PyPI](https://pypi.org/project/withings2garmin-hugoh/) when a commit
+warrants it: `feat:` → minor, `fix:` → patch, `BREAKING CHANGE:`/`!` → major.
+The package version itself is derived from the latest git tag (via
+`hatch-vcs`) — nothing to bump by hand. PyPI publishing uses
+[Trusted Publishing](https://docs.pypi.org/trusted-publishers/) (OIDC), so no
+API token is stored in the repo.
 
 ## License
 

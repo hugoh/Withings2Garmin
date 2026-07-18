@@ -33,7 +33,6 @@ wheels/
 # Output files
 *.json
 !.renovaterc.json
-!dprint.json
 !biome.json
 *.fit
 

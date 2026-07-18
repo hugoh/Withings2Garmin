@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: hugoh/gh-workflows/setup@f8f3ce3457f90b826b9eb79aa1b63ed04fb6bbfd # v1.2.4
+      - uses: hugoh/gh-workflows/setup@fe2707057b8da8fab2460fc1f0e816561fa8a958 # v1.3.0
       - run: uv sync
       - run: uv run pytest
-      - uses: hugoh/gh-workflows/hk-check@f8f3ce3457f90b826b9eb79aa1b63ed04fb6bbfd # v1.2.4
+      - uses: hugoh/gh-workflows/hk-check@fe2707057b8da8fab2460fc1f0e816561fa8a958 # v1.3.0

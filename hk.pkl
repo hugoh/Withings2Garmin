@@ -1,6 +1,6 @@
-amends "package://github.com/jdx/hk/releases/download/v1.50.0/hk@1.50.0#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v1.50.0/hk@1.50.0#/Builtins.pkl"
-import "package://github.com/hugoh/hk-config/releases/download/v1.0.0/hk-config@1.0.0#/base.pkl" as Base
+amends "package://github.com/jdx/hk/releases/download/v1.52.0/hk@1.52.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.52.0/hk@1.52.0#/Builtins.pkl"
+import "package://github.com/hugoh/hk-config/releases/download/v1.2.0/hk-config@1.2.0#/base.pkl" as Base
 
 min_hk_version = Base.min_hk_version
 
@@ -14,7 +14,7 @@ local linters = new Mapping<String, Step> {
         check = "uv run ruff check --force-exclude {{ files }}"
         fix = "uv run ruff check --force-exclude --fix {{ files }}"
     }
-    ["ruff-format"] = (Builtins.ruff_format) {
+    ["ruff_format"] = (Builtins.ruff_format) {
         check_diff = "uv run ruff format --quiet --force-exclude --diff {{ files }}"
         fix = "uv run ruff format --quiet --force-exclude {{ files }}"
     }
@@ -43,7 +43,7 @@ hooks {
     // depends on commit messages following that format.
     ["commit-msg"] {
         steps {
-            ["conventional-commit"] = Builtins.check_conventional_commit
+            ...Base.commit_msg
         }
     }
 }

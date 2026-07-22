@@ -1,15 +1,14 @@
 [project]
 name = "withings2garmin-hugoh"
-dynamic = ["version"]
 description = "Simplified Withings to Garmin sync tool"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [
   { name = "Albert Sodel" },
   { name = "Hugo Haas" },
 ]
-readme = "README.md"
-license = "MIT"
-license-files = ["LICENSE"]
-requires-python = ">=3.12"
 classifiers = [
   "Development Status :: 4 - Beta",
   "Environment :: Console",
@@ -19,37 +18,38 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Topic :: Utilities",
 ]
+dynamic = ["version"]
 
 dependencies = [
-  "requests>=2.34.2",
+  "filelock>=3.29.7",
+  "garmin-fit-sdk>=21.208.0",
   "garminconnect>=0.3.6",
   "platformdirs>=4.0",
   "python-dotenv>=1.2.2",
-  "garmin-fit-sdk>=21.208.0",
+  "requests>=2.34.2",
   "tenacity>=9.1.4",
-  "filelock>=3.29.7",
 ]
 
 [project.urls]
 Homepage = "https://github.com/hugoh/Withings2Garmin"
-Repository = "https://github.com/hugoh/Withings2Garmin"
 Issues = "https://github.com/hugoh/Withings2Garmin/issues"
+Repository = "https://github.com/hugoh/Withings2Garmin"
 Upstream = "https://github.com/jaroslawhartman/withings-sync"
 
 [project.scripts]
 withings2garmin = "withings2garmin.sync:main"
 
-[build-system]
-requires = ["hatchling", "hatch-vcs"]
-build-backend = "hatchling.build"
-
 [dependency-groups]
 dev = [
-  "ty>=0.0.57",
-  "ruff>=0.15.20",
   "pytest>=9.1.1",
+  "ruff>=0.15.20",
+  "ty>=0.0.57",
   "types-requests>=2.33.0.20260518",
 ]
+
+[build-system]
+requires = ["hatch-vcs", "hatchling"]
+build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/withings2garmin"]
@@ -57,18 +57,18 @@ packages = ["src/withings2garmin"]
 [tool.hatch.version]
 source = "vcs"
 
+[tool.pyrefly]
+project-includes = [
+  "**/*.py*",
+  "**/*.ipynb",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
 [tool.ruff]
 line-length = 88
 target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM"]
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-
-[tool.pyrefly]
-project-includes = [
-  "**/*.py*",
-  "**/*.ipynb",
-]

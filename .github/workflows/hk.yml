@@ -15,9 +15,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: hugoh/gh-workflows/setup@fe2707057b8da8fab2460fc1f0e816561fa8a958 # v1.3.0
+      - uses: hugoh/gh-workflows/setup@6b3318af9824bf310afc501232f53a99083296cd # v1.7.1
       - run: uv sync
       - run: uv run pytest
-      - uses: hugoh/gh-workflows/hk-check@fe2707057b8da8fab2460fc1f0e816561fa8a958 # v1.3.0
+      - uses: hugoh/gh-workflows/hk-check@6b3318af9824bf310afc501232f53a99083296cd # v1.7.1
         env:
           PINACT_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

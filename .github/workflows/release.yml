@@ -57,7 +57,7 @@ jobs:
           fetch-depth: 0
           ref: ${{ needs.release.outputs.new_tag }}
 
-      - uses: hugoh/gh-workflows/setup@6b3318af9824bf310afc501232f53a99083296cd # v1.7.1
+      - uses: hugoh/gh-workflows/setup@e3deb909891d6fc8089311f2e91e85796eb6c725 # v1.9.2
 
       - name: Build package
         run: uv build

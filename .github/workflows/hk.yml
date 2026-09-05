@@ -13,6 +13,10 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.event.pull_request.number ||
+        github.ref }}
+      cancel-in-progress: true
     timeout-minutes: 10
     steps:
       - uses: hugoh/gh-workflows/setup@0605171371448c645486e3200e1940b1813ef9f1 # v1.12.0

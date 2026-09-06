@@ -42,6 +42,7 @@ withings2garmin = "withings2garmin.sync:main"
 [dependency-groups]
 dev = [
   "pytest>=9.1.1",
+  "pytest-cov>=7",
   "ruff>=0.15.20",
   "ty>=0.0.57",
   "types-requests>=2.33.0.20260518",
@@ -50,6 +51,20 @@ dev = [
 [build-system]
 requires = ["hatch-vcs", "hatchling"]
 build-backend = "hatchling.build"
+
+[tool.coverage.run]
+branch = true
+source = ["src/withings2garmin"]
+omit = ["*/__main__.py"]
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true
+exclude_also = [
+  "if TYPE_CHECKING:",
+  "raise NotImplementedError",
+  "if __name__ == .__main__.:",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/withings2garmin"]
@@ -64,6 +79,7 @@ project-includes = [
 ]
 
 [tool.pytest.ini_options]
+addopts = ["--cov", "--cov-report=term-missing"]
 testpaths = ["tests"]
 
 [tool.ruff]

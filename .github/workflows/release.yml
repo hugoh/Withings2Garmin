@@ -9,7 +9,7 @@ permissions: {}
 
 jobs:
   release:
-    uses: hugoh/gh-workflows/.github/workflows/release.yml@1d2a18056f2122b7f49c2e8aacb48c40cb6eaab9 # v1.24.0
+    uses: hugoh/gh-workflows/.github/workflows/release.yml@fc872ebc6ac6bb28fa73a2e83f9f354faad9b5b7 # v1.40.6
     permissions:
       contents: write
 
@@ -28,7 +28,7 @@ jobs:
           fetch-depth: 0
           ref: ${{ needs.release.outputs.tag }}
 
-      - uses: hugoh/gh-workflows/setup@1d2a18056f2122b7f49c2e8aacb48c40cb6eaab9 # v1.24.0
+      - uses: hugoh/gh-workflows/setup@fc872ebc6ac6bb28fa73a2e83f9f354faad9b5b7 # v1.40.6
 
       - name: Build package
         run: uv build

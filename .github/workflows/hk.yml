@@ -19,7 +19,7 @@ jobs:
       cancel-in-progress: true
     timeout-minutes: 10
     steps:
-      - uses: hugoh/gh-workflows/setup@5e3ffc337ef532df4ff618c5d2844a09b254eaee # v1.40.10
-      - uses: hugoh/gh-workflows/hk-check@5e3ffc337ef532df4ff618c5d2844a09b254eaee # v1.40.10
+      - uses: hugoh/gh-workflows/setup@1395fc42fd4ca42b131cc238cea3cc6ab42af4dd # v1.40.11
+      - uses: hugoh/gh-workflows/hk-check@1395fc42fd4ca42b131cc238cea3cc6ab42af4dd # v1.40.11
         env:
           PINACT_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

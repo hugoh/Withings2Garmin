@@ -7,6 +7,10 @@ on:
 
 permissions: {}
 
+concurrency:
+  group: ${{ github.workflow }}-caller-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   release:
     uses: hugoh/gh-workflows/.github/workflows/release.yml@1395fc42fd4ca42b131cc238cea3cc6ab42af4dd # v1.40.11

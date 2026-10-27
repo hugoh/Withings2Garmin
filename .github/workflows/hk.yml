@@ -1,9 +1,10 @@
 name: hk
 
-permissions:
-  contents: read
-  packages: read
-  statuses: write
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 on:
   push:
@@ -12,11 +13,11 @@ on:
 
 jobs:
   check:
+    permissions:
+      contents: read
+      packages: read
+      statuses: write
     runs-on: ubuntu-latest
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.event.pull_request.number ||
-        github.ref }}
-      cancel-in-progress: true
     timeout-minutes: 10
     steps:
       - uses: hugoh/gh-workflows/setup@1395fc42fd4ca42b131cc238cea3cc6ab42af4dd # v1.40.11

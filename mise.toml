@@ -1,6 +1,6 @@
 [tools]
 uv = "0.13.6"
-hk = "2.9.0"
+hk = "2.10.0"
 biome = "2.6.4"
 jactionlint = "2.2.0"
 pinact = "5.0.0"
